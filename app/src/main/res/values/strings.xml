@@ -1,4 +1,6 @@
 <resources>
     <string name="app_name">Ocelot</string>
     <string name="app_service_name">OcelotClient</string>
+    <string name="notification_title">Ocelot</string>
+    <string name="notification_message">Ocelot is connected.</string>
 </resources>

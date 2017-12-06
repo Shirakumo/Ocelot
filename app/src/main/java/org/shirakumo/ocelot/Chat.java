@@ -1,16 +1,25 @@
 package org.shirakumo.ocelot;
 
 import android.app.Activity;
+import android.content.Context;
 import android.net.Uri;
 import android.os.Bundle;
-import android.app.FragmentTransaction;
+import android.content.Intent;
+import android.content.ServiceConnection;
+import android.content.ComponentName;
+import android.os.IBinder;
 
 public class Chat extends Activity implements Output.OnFragmentInteractionListener{
+
+    private Intent serviceIntent;
+    private UpdateHandler handler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_chat);
+        serviceIntent = new Intent(this, Service.class);
+        handler = new UpdateHandler(this);
     }
 
     @Override
@@ -21,34 +30,40 @@ public class Chat extends Activity implements Output.OnFragmentInteractionListen
     @Override
     protected void onStart() {
         super.onStart();
-        // FIXME: Start service
+        startService(serviceIntent);
+        bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        // FIXME: Disconnect from service
+        unbindService(serviceConnection);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        // FIXME: Reconnect to service
+        bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        // FIXME: Destroy service
+        stopService(serviceIntent);
     }
 
-    private class Handler extends org.shirakumo.lichat.HandlerAdapter{
-        private Handler(){}
+    private ServiceConnection serviceConnection = new ServiceConnection() {
+        ClientBinder binder;
 
-        public void handle(org.shirakumo.lichat.updates.Message update){
-            FragmentTransaction ft = getFragmentManager().beginTransaction();
-            ft.add(R.id.output, Output.newInstance(org.shirakumo.lichat.CL.universalToUnix(update.clock), update.from, update.text), "a");
-            ft.commit();
+        @Override
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            binder = (ClientBinder)service;
+            binder.client.addHandler(handler);
         }
-    }
+
+        @Override
+        public void onServiceDisconnected(ComponentName arg0) {
+            binder.client.removeHandler(handler);
+        }
+    };
 }
