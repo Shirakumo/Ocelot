@@ -168,24 +168,23 @@ public class Chat extends Activity implements EditText.OnEditorActionListener{
 
     private ServiceConnection serviceConnection = new ServiceConnection() {
         ServiceBinder binder;
+        Handler handlerWrapper = (Update update)->{
+            runOnUiThread(()->{
+                handler.handle(update);
+            });
+        };
 
         @Override
         public void onServiceConnected(ComponentName className, IBinder ibinder) {
             binder = (ServiceBinder)ibinder;
-            binder.service.addHandler(new Handler(){
-                public void handle(Update update){
-                    runOnUiThread(()->{
-                        handler.handle(update);
-                    });
-                }
-            });
+            binder.service.addHandler(handlerWrapper);
             service = binder.service;
             service.connect();
         }
 
         @Override
         public void onServiceDisconnected(ComponentName arg0) {
-            binder.service.removeHandler(handler);
+            binder.service.removeHandler(handlerWrapper);
             service = null;
         }
     };
