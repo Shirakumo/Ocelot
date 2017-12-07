@@ -1,87 +1,78 @@
 package org.shirakumo.ocelot;
 
 import android.app.Activity;
+import android.app.FragmentManager;
 import android.app.FragmentTransaction;
+import android.app.LocalActivityManager;
 import android.content.Context;
 import android.os.Bundle;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.ComponentName;
 import android.os.IBinder;
-import android.widget.EditText;
-import android.widget.TextView;
-import android.widget.FrameLayout;
-import android.view.KeyEvent;
-import android.view.inputmethod.EditorInfo;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentTabHost;
+
 import java.util.HashMap;
 import org.shirakumo.lichat.Handler;
 import org.shirakumo.lichat.updates.Update;
 
-public class Chat extends Activity implements EditText.OnEditorActionListener{
+public class Chat extends FragmentActivity implements Channel.ChannelListener{
 
     private Intent serviceIntent;
     private UpdateHandler handler;
     private boolean bound = false;
     private Service service;
-    private Channel channel;
     private HashMap<String, Channel> channels;
     private HashMap<String, Command> commands;
+    private FragmentTabHost tabs;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_chat);
         serviceIntent = new Intent(this, Service.class);
         handler = new UpdateHandler(this);
         channels = new HashMap<>();
         commands = new HashMap<>();
+        tabs = findViewById(R.id.channels);
+        tabs.setup(this, getSupportFragmentManager(), R.id.channels);
 
-        EditText editText = (EditText) findViewById(R.id.input);
-        editText.setOnEditorActionListener(this);
-
-        addCommand("join", (String[] args)->{
+        addCommand("join", (Channel c, String[] args)->{
             service.client.s("JOIN",
                     "channel", Toolkit.join(args, " ", 1));
         });
 
-        addCommand("leave", (String[] args)->{
+        addCommand("leave", (Channel c, String[] args)->{
             service.client.s("LEAVE",
-                    "channel", (args.length == 1)? channel.getName() : Toolkit.join(args, " ", 1));
+                    "channel", (args.length == 1)? c.getName() : Toolkit.join(args, " ", 1));
         });
 
-        addCommand("create", (String[] args)->{
+        addCommand("create", (Channel c, String[] args)->{
             service.client.s("CREATE",
                     "channel", (args.length == 1)? null : Toolkit.join(args, " ", 1));
         });
 
-        addCommand("help", (String[] args)->{
-            channel.showText("Available commands: "+Toolkit.join((String[])commands.keySet().toArray(), ", "));
+        addCommand("help", (Channel c, String[] args)->{
+            String[] commandNames = new String[commands.keySet().size()];
+            c.showText("Available commands: "+Toolkit.join((String[])commands.keySet().toArray(commandNames), ", "));
         });
     }
 
     @Override
-    public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-        if (actionId == EditorInfo.IME_ACTION_SEND) {
-            handleInput(v.getText().toString());
-            v.setText("");
-            return true;
-        }
-        return false;
-    }
-
-    public void handleInput(String input){
+    public void onInput(Channel c, String input){
         if(service == null) return;
         if(input.indexOf("/") == 0){
             String[] args = input.substring(1).split(" +");
             Command command = commands.get(args[0].toLowerCase());
             if(command != null){
-                command.execute(args);
+                command.execute(c, args);
             }else{
-                channel.showText("No such command "+args[0]);
+                c.showText("No such command "+args[0]);
             }
         }else{
             service.client.s("MESSAGE",
-                    "channel", getChannel().getName(),
+                    "channel", c.getName(),
                     "text", input);
         }
     }
@@ -90,12 +81,14 @@ public class Chat extends Activity implements EditText.OnEditorActionListener{
         if(!channels.containsKey(name)){
             Channel channel = Channel.newInstance(name);
             channels.put(name, channel);
+            tabs.addTab(tabs.newTabSpec(name).setIndicator(name), Placeholder.class, null);
+            getSupportFragmentManager().beginTransaction().replace(R.id.placeholder, channel).commit();
         }
         return getChannel(name);
     }
 
     public Channel getChannel(){
-        return channel;
+        return getChannel(tabs.getCurrentTabTag());
     }
 
     public Channel getChannel(String name){
@@ -103,12 +96,7 @@ public class Chat extends Activity implements EditText.OnEditorActionListener{
     }
 
     public Channel showChannel(Channel channel){
-        FrameLayout frame = (FrameLayout) findViewById(R.id.channel);
-        frame.removeAllViews();
-        FragmentTransaction ft = getFragmentManager().beginTransaction();
-        ft.add(R.id.channel, channel);
-        ft.commit();
-        this.channel = channel;
+        tabs.setCurrentTabByTag(channel.getName());
         return channel;
     }
 
@@ -162,6 +150,7 @@ public class Chat extends Activity implements EditText.OnEditorActionListener{
     @Override
     protected void onStop() {
         super.onStop();
+        if(service != null) service.disconnect();
         unbind();
         stopService(serviceIntent);
     }
