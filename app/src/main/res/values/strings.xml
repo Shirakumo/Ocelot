@@ -3,4 +3,7 @@
     <string name="app_service_name">OcelotClient</string>
     <string name="notification_title">Ocelot</string>
     <string name="notification_message">Ocelot is connected.</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>
