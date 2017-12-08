@@ -10,14 +10,16 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.ComponentName;
 import android.os.IBinder;
-import android.support.v4.app.FragmentActivity;
-import android.support.v4.app.FragmentTabHost;
+import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+import android.widget.LinearLayout;
 
 import java.util.HashMap;
 import org.shirakumo.lichat.Handler;
 import org.shirakumo.lichat.updates.Update;
 
-public class Chat extends FragmentActivity implements Channel.ChannelListener{
+public class Chat extends Activity implements Channel.ChannelListener{
 
     private Intent serviceIntent;
     private UpdateHandler handler;
@@ -25,7 +27,7 @@ public class Chat extends FragmentActivity implements Channel.ChannelListener{
     private Service service;
     private HashMap<String, Channel> channels;
     private HashMap<String, Command> commands;
-    private FragmentTabHost tabs;
+    private Channel channel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState){
@@ -35,8 +37,6 @@ public class Chat extends FragmentActivity implements Channel.ChannelListener{
         handler = new UpdateHandler(this);
         channels = new HashMap<>();
         commands = new HashMap<>();
-        tabs = findViewById(R.id.channels);
-        tabs.setup(this, getSupportFragmentManager(), R.id.channels);
 
         addCommand("join", (Channel c, String[] args)->{
             service.client.s("JOIN",
@@ -62,7 +62,9 @@ public class Chat extends FragmentActivity implements Channel.ChannelListener{
     @Override
     public void onInput(Channel c, String input){
         if(service == null) return;
-        if(input.indexOf("/") == 0){
+        if(input.isEmpty()) return;
+
+        if(input.startsWith("/")){
             String[] args = input.substring(1).split(" +");
             Command command = commands.get(args[0].toLowerCase());
             if(command != null){
@@ -77,26 +79,44 @@ public class Chat extends FragmentActivity implements Channel.ChannelListener{
         }
     }
 
+    @Override
+    public void registerChannel(Channel c){
+        channels.put(c.getName(), c);
+    }
+
     public Channel ensureChannel(String name){
         if(!channels.containsKey(name)){
+            // Create channel fragment
             Channel channel = Channel.newInstance(name);
             channels.put(name, channel);
-            tabs.addTab(tabs.newTabSpec(name).setIndicator(name), Placeholder.class, null);
-            getSupportFragmentManager().beginTransaction().replace(R.id.placeholder, channel).commit();
+            FragmentTransaction ft = getFragmentManager().beginTransaction();
+            ft.add(R.id.channel, channel);
+            ft.commit();
+            getFragmentManager().executePendingTransactions();
+            // Create tab button
+            Button tab = new Button(this, null, R.attr.borderlessButtonStyle);
+            tab.setText(name);
+            tab.setOnClickListener((View v)->showChannel(channel));
+            tab.setPadding(2, 0, 2, 0);
+            ((LinearLayout)findViewById(R.id.tabs)).addView(tab);
         }
         return getChannel(name);
     }
 
     public Channel getChannel(){
-        return getChannel(tabs.getCurrentTabTag());
+        return channel;
     }
 
     public Channel getChannel(String name){
         return channels.get(name);
     }
 
-    public Channel showChannel(Channel channel){
-        tabs.setCurrentTabByTag(channel.getName());
+    public Channel showChannel(Channel toShow){
+        for(Channel c : channels.values()){
+            c.getView().setVisibility(View.GONE);
+        }
+        toShow.getView().setVisibility(View.VISIBLE);
+        channel = toShow;
         return channel;
     }
 

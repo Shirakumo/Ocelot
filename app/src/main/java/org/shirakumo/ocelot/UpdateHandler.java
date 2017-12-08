@@ -1,5 +1,7 @@
 package org.shirakumo.ocelot;
 
+import android.util.Log;
+
 import org.shirakumo.lichat.HandlerAdapter;
 import org.shirakumo.lichat.updates.*;
 
@@ -29,7 +31,7 @@ public class UpdateHandler extends HandlerAdapter {
     }
 
     public void handle(ConnectionLost update){
+        Log.i("FUCK", Log.getStackTraceString(update.exception));
         chat.getChannel().showText(" ** Connection lost");
-        update.exception.printStackTrace();
     }
 }

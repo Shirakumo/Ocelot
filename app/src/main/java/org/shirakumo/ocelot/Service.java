@@ -44,7 +44,7 @@ public class Service extends android.app.Service {
     public void connect(){
         if(!client.isConnected()) {
             client.username = "Ocelot";
-            client.hostname = "chat.tymoon.eu";
+            client.hostname = "10.0.2.2";
             client.port = 1111;
             client.connect();
         }

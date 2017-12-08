@@ -2,11 +2,11 @@ package org.shirakumo.ocelot;
 
 import android.content.Context;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
+import android.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.support.v4.app.FragmentTransaction;
+import android.app.FragmentTransaction;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.view.KeyEvent;
@@ -15,10 +15,10 @@ import android.util.Log;
 import org.shirakumo.lichat.CL;
 
 public class Channel extends Fragment  implements EditText.OnEditorActionListener{
-    private static final String ARG_NAME = "name";
+    public static final String ARG_NAME = "name";
 
     private String name;
-    private int outputID = -1;
+    private View view;
     private ChannelListener listener;
 
     public Channel() {
@@ -42,9 +42,9 @@ public class Channel extends Fragment  implements EditText.OnEditorActionListene
     }
 
     public void showText(long clock, String from, String text){
-        if(outputID != -1) {
+        if(view != null) {
             FragmentTransaction ft = getFragmentManager().beginTransaction();
-            ft.add(outputID, Output.newInstance(CL.universalToUnix(clock), from, text));
+            ft.add(view.findViewById(R.id.output).getId(), Output.newInstance(CL.universalToUnix(clock), from, text));
             ft.commit();
         }
     }
@@ -52,6 +52,7 @@ public class Channel extends Fragment  implements EditText.OnEditorActionListene
     public String getName(){
         return name;
     }
+    public View getView() { return view; }
 
     public static Channel newInstance(String name) {
         Channel fragment = new Channel();
@@ -73,7 +74,7 @@ public class Channel extends Fragment  implements EditText.OnEditorActionListene
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_channel, container, false);
-        outputID = v.findViewById(R.id.output).getId();
+        view = v;
 
         EditText input = (EditText) v.findViewById(R.id.input);
         input.setOnEditorActionListener(this);
@@ -85,6 +86,7 @@ public class Channel extends Fragment  implements EditText.OnEditorActionListene
         super.onAttach(context);
         try {
             listener = (ChannelListener) context;
+            listener.registerChannel(this);
         } catch (ClassCastException e) {
             throw new ClassCastException(context.toString()
                     + " must implement ChannelListener");
@@ -99,5 +101,6 @@ public class Channel extends Fragment  implements EditText.OnEditorActionListene
 
     public interface ChannelListener{
         public void onInput(Channel c, String input);
+        public void registerChannel(Channel c);
     }
 }
