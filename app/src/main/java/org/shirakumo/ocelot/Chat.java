@@ -12,11 +12,13 @@ import android.content.ComponentName;
 import android.os.IBinder;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
 
 import java.util.HashMap;
 import org.shirakumo.lichat.Handler;
+import org.shirakumo.lichat.updates.Leave;
 import org.shirakumo.lichat.updates.Update;
 
 public class Chat extends Activity implements Channel.ChannelListener{
@@ -46,6 +48,13 @@ public class Chat extends Activity implements Channel.ChannelListener{
         addCommand("leave", (Channel c, String[] args)->{
             service.client.s("LEAVE",
                     "channel", (args.length == 1)? c.getName() : Toolkit.join(args, " ", 1));
+        });
+
+        addCommand("close", (Channel c, String[] args)->{
+            Object id = ((Update)service.client.s("LEAVE","channel", c.getName())).id;
+            service.client.addCallback((Integer)id, (Update u)->{
+                if(u instanceof Leave) removeChannel(c);
+            });
         });
 
         addCommand("create", (Channel c, String[] args)->{
@@ -98,9 +107,20 @@ public class Chat extends Activity implements Channel.ChannelListener{
             tab.setText(name);
             tab.setOnClickListener((View v)->showChannel(channel));
             tab.setPadding(2, 0, 2, 0);
+            tab.setTag(channel);
             ((LinearLayout)findViewById(R.id.tabs)).addView(tab);
         }
         return getChannel(name);
+    }
+
+    public void removeChannel(Channel channel){
+        ((ViewGroup)channel.getView().getParent()).removeView(channel.getView());
+        LinearLayout tabs = (LinearLayout)findViewById(R.id.tabs);
+        tabs.removeView(tabs.findViewWithTag(channel));
+    }
+
+    public void removeChannel(String name){
+        removeChannel(getChannel(name));
     }
 
     public Channel getChannel(){

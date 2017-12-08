@@ -16,10 +16,12 @@ import org.shirakumo.lichat.CL;
 
 public class Channel extends Fragment  implements EditText.OnEditorActionListener{
     public static final String ARG_NAME = "name";
+    private static int idCounter = 1000;
 
     private String name;
     private View view;
     private ChannelListener listener;
+    private int outputId = idCounter++;
 
     public Channel() {
         // Required empty public constructor
@@ -44,7 +46,7 @@ public class Channel extends Fragment  implements EditText.OnEditorActionListene
     public void showText(long clock, String from, String text){
         if(view != null) {
             FragmentTransaction ft = getFragmentManager().beginTransaction();
-            ft.add(view.findViewById(R.id.output).getId(), Output.newInstance(CL.universalToUnix(clock), from, text));
+            ft.add(outputId, Output.newInstance(CL.universalToUnix(clock), from, text));
             ft.commit();
         }
     }
@@ -74,10 +76,12 @@ public class Channel extends Fragment  implements EditText.OnEditorActionListene
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_channel, container, false);
-        view = v;
+        v.findViewById(R.id.output).setId(outputId);
 
         EditText input = (EditText) v.findViewById(R.id.input);
         input.setOnEditorActionListener(this);
+
+        view = v;
         return v;
     }
 
