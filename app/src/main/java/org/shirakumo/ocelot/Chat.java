@@ -1,27 +1,27 @@
 package org.shirakumo.ocelot;
 
 import android.app.Activity;
-import android.app.FragmentManager;
 import android.app.FragmentTransaction;
-import android.app.LocalActivityManager;
 import android.content.Context;
 import android.os.Bundle;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.ComponentName;
 import android.os.IBinder;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
 
 import java.util.HashMap;
+import java.util.Map;
+
 import org.shirakumo.lichat.Handler;
+import org.shirakumo.lichat.Payload;
 import org.shirakumo.lichat.updates.Leave;
 import org.shirakumo.lichat.updates.Update;
 
-public class Chat extends Activity implements Channel.ChannelListener{
+public class Chat extends Activity implements Channel.ChannelListener, EmoteList.EmoteListListener{
 
     private Intent serviceIntent;
     private UpdateHandler handler;
@@ -103,11 +103,10 @@ public class Chat extends Activity implements Channel.ChannelListener{
             ft.commit();
             getFragmentManager().executePendingTransactions();
             // Create tab button
-            Button tab = new Button(this, null, R.attr.borderlessButtonStyle);
+            Button tab = (Button)getLayoutInflater().inflate(R.layout.channel_button, null);
             tab.setText(name);
-            tab.setOnClickListener((View v)->showChannel(channel));
-            tab.setPadding(2, 0, 2, 0);
             tab.setTag(channel);
+            tab.setOnClickListener((View v)->showChannel(channel));
             ((LinearLayout)findViewById(R.id.tabs)).addView(tab);
         }
         return getChannel(name);
@@ -153,6 +152,10 @@ public class Chat extends Activity implements Channel.ChannelListener{
         Command command = commands.get(name);
         commands.remove(name);
         return command;
+    }
+
+    public Payload getEmote(String name){
+        return service.client.emotes.get(name);
     }
 
     public void bind(){
@@ -217,4 +220,14 @@ public class Chat extends Activity implements Channel.ChannelListener{
             service = null;
         }
     };
+
+    @Override
+    public void emoteChosen(String emote) {
+        channel.setInput(channel.getInput()+":"+emote+":");
+    }
+
+    @Override
+    public Map<String, Payload> getEmotes() {
+        return service.client.emotes;
+    }
 }

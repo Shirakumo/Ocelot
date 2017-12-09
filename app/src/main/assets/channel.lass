@@ -1,0 +1,19 @@
+(\#channel
+ :font-family monospace
+ (.update
+  :display flex
+  (>* :padding 2px 5px 2px 5px)
+  (img :max-height 30vh)
+  (.clock :width 12vw
+          :font-size 0.9em
+          :text-align center
+          :vertical-align middle)
+  (.from :min-width 12vw
+         :max-width 12vw
+         :overflow hidden
+         :white-space nowrap
+         :text-overflow ellipsis)
+  (.text :word-wrap break-word
+         :white-space pre-wrap
+         :min-width 0px
+         :flex-grow 1)))

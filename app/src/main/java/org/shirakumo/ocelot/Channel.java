@@ -1,18 +1,31 @@
 package org.shirakumo.ocelot;
 
 import android.content.Context;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.app.Fragment;
+import android.os.Environment;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.app.FragmentTransaction;
+import android.webkit.WebView;
 import android.widget.EditText;
+import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.view.KeyEvent;
 import android.view.inputmethod.EditorInfo;
 import android.util.Log;
 import org.shirakumo.lichat.CL;
+import org.shirakumo.lichat.Payload;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.TimeZone;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Channel extends Fragment  implements EditText.OnEditorActionListener{
     public static final String ARG_NAME = "name";
@@ -25,6 +38,85 @@ public class Channel extends Fragment  implements EditText.OnEditorActionListene
 
     public Channel() {
         // Required empty public constructor
+    }
+
+    public String replaceEmotes(String text){
+        StringBuilder builder = new StringBuilder();
+        int start = 0;
+        while(start<text.length() && text.charAt(start) != ':') start++;
+        if(start < text.length()){
+            builder.append(text, 0, start);
+            int end = start+1;
+            for(; end<text.length(); end++){
+                if(text.charAt(end) == ':'){
+                    Payload emote = listener.getEmote(text.substring(start, end));
+                    if(emote != null){
+                        builder.append("<img src=\"file://"+Environment.getExternalStorageDirectory()+"/"+emote+"\">");
+                    }else{
+                        builder.append(text, start, end);
+                        start = end;
+                    }
+                }
+            }
+            builder.append(text, start, end);
+        }else{
+            builder.append(text);
+        }
+        return builder.toString();
+    }
+
+    private static Pattern urlPattern = Pattern.compile("((?:[\\w\\-_]+:\\/\\/)([\\w_\\-]+(?:(?:\\.[\\w_\\-]+)+))(?:[\\w.,@?^=%&:/~+#\\-()]*[\\w@?^=%&/~+#\\-])?)");
+    public String linkifyURLs(String text){
+        return Toolkit.replaceAll(text, urlPattern, (String match, String[] groups)->{
+            String url = groups[0];
+            return "<a href=\""+unescapeHTML(url)+"\" class=\"userlink\">"+url+"</a>";
+        });
+    }
+
+    private static Pattern unescapePattern = Pattern.compile("&([\\w]+);");
+    public String unescapeHTML(String text){
+        return Toolkit.replaceAll(text, unescapePattern, (String match, String[] groups)->{
+            String attr = groups[0];
+            if(attr.equals("lt")) return "<";
+            if(attr.equals("gt")) return ">";
+            if(attr.equals("quot")) return "\"";
+            if(attr.equals("amp")) return "&";
+            return match;
+        });
+    }
+
+    private static Pattern escapePattern = Pattern.compile("&([<>\"&\\n]);");
+    public String escapeHTML(String text){
+        return Toolkit.replaceAll(text, escapePattern, (String match, String[] groups)->{
+            String attr = groups[0];
+            if(attr.equals("<")) return "&lt;";
+            if(attr.equals(">")) return "&gt;";
+            if(attr.equals("\"")) return "&quot;";
+            if(attr.equals("&")) return "&amp;";
+            if(attr.equals("\n")) return "<br>";
+            return match;
+        });
+    }
+
+    public String renderText(String text){
+        return replaceEmotes(linkifyURLs(escapeHTML(text)));
+    }
+
+    public String renderTimestamp(long timestamp){
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+        sdf.setTimeZone(TimeZone.getDefault());
+        return sdf.format(new Date(timestamp*1000L));
+    }
+
+    public int objectColor(Object o){
+        int encoded = o.hashCode() % 0xFFF;
+        int r = 16*(1+(encoded&0xF00)>>8)-1;
+        int g = 16*(1+(encoded&0x0F0)>>4)-1;
+        int b = 16*(1+(encoded&0x00F)>>0)-1;
+
+        return Color.rgb(Math.min(200, Math.max(50, r)),
+                Math.min(180, Math.max(80, g)),
+                Math.min(180, Math.max(80, b)));
     }
 
     @Override
@@ -45,9 +137,24 @@ public class Channel extends Fragment  implements EditText.OnEditorActionListene
 
     public void showText(long clock, String from, String text){
         if(view != null) {
-            FragmentTransaction ft = getFragmentManager().beginTransaction();
-            ft.add(outputId, Output.newInstance(CL.universalToUnix(clock), from, text));
-            ft.commit();
+            // FIXME: Properly escape text and from.
+            ((WebView) view.findViewById(outputId)).loadUrl("javascript:(function(){"+
+                    "showText("+clock+", \""+from+"\", \""+renderText(text)+"\");"+
+                    "})()");
+        }
+    }
+
+    public String getInput(){
+        if(view != null) {
+            return ((EditText) view.findViewById(R.id.input)).getText().toString();
+        }else{
+            return "";
+        }
+    }
+
+    public void setInput(String text){
+        if(view != null) {
+            ((EditText) view.findViewById(R.id.input)).setText(text);
         }
     }
 
@@ -76,10 +183,21 @@ public class Channel extends Fragment  implements EditText.OnEditorActionListene
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_channel, container, false);
-        v.findViewById(R.id.output).setId(outputId);
+
+        String content = Toolkit.readAssetFileAsString((Context)listener, "channel.html");
+
+        WebView web = v.findViewById(R.id.output);
+        web.setId(outputId);
+        web.getSettings().setJavaScriptEnabled(true);
+        web.loadDataWithBaseURL("file:///android_asset/", content, "text/html", "UTF-8", null);
 
         EditText input = (EditText) v.findViewById(R.id.input);
         input.setOnEditorActionListener(this);
+
+        v.findViewById(R.id.select_emote).setOnClickListener((vw)->{
+            FragmentTransaction ft = getFragmentManager().beginTransaction();
+            EmoteList.newInstance().show(ft, "emotes");
+        });
 
         view = v;
         return v;
@@ -106,5 +224,6 @@ public class Channel extends Fragment  implements EditText.OnEditorActionListene
     public interface ChannelListener{
         public void onInput(Channel c, String input);
         public void registerChannel(Channel c);
+        public Payload getEmote(String name);
     }
 }
