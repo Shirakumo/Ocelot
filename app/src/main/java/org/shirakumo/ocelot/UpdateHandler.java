@@ -3,6 +3,7 @@ package org.shirakumo.ocelot;
 import android.util.Log;
 
 import org.shirakumo.lichat.HandlerAdapter;
+import org.shirakumo.lichat.Payload;
 import org.shirakumo.lichat.updates.*;
 
 public class UpdateHandler extends HandlerAdapter {
@@ -30,8 +31,11 @@ public class UpdateHandler extends HandlerAdapter {
         chat.getChannel(update.channel).showText(update.clock, update.from, update.text);
     }
 
+    public void handle(Data update){
+        chat.getChannel(update.channel).showPayload(update.clock, update.from, new Payload(update));
+    }
+
     public void handle(ConnectionLost update){
-        Log.i("FUCK", Log.getStackTraceString(update.exception));
-        chat.getChannel().showText(" ** Connection lost");
+        chat.getChannel(Chat.SYSTEM_CHANNEL).showText(" ** Connection lost");
     }
 }

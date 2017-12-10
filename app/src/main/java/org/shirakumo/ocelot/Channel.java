@@ -1,11 +1,13 @@
 package org.shirakumo.ocelot;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.app.Fragment;
 import android.os.Environment;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -17,17 +19,16 @@ import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.view.KeyEvent;
 import android.view.inputmethod.EditorInfo;
-import android.util.Log;
 import org.shirakumo.lichat.CL;
 import org.shirakumo.lichat.Payload;
 
+import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class Channel extends Fragment  implements EditText.OnEditorActionListener{
+public class Channel extends Fragment{
     public static final String ARG_NAME = "name";
     private static int idCounter = 1000;
 
@@ -49,9 +50,11 @@ public class Channel extends Fragment  implements EditText.OnEditorActionListene
             int end = start+1;
             for(; end<text.length(); end++){
                 if(text.charAt(end) == ':'){
-                    Payload emote = listener.getEmote(text.substring(start, end));
+                    String emoteName = text.substring(start+1, end);
+                    File emote = listener.getEmotePath(emoteName);
                     if(emote != null){
-                        builder.append("<img src=\"file://"+Environment.getExternalStorageDirectory()+"/"+emote+"\">");
+                        builder.append("<img src="+Toolkit.prin1("file://"+emote.getAbsolutePath())+">");
+                        start = end+1;
                     }else{
                         builder.append(text, start, end);
                         start = end;
@@ -119,29 +122,27 @@ public class Channel extends Fragment  implements EditText.OnEditorActionListene
                 Math.min(180, Math.max(80, b)));
     }
 
-    @Override
-    public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-        if (actionId == EditorInfo.IME_ACTION_SEND ||
-                (event != null && !event.isShiftPressed() && event.getKeyCode() == KeyEvent.KEYCODE_ENTER)){
-            if(listener != null)
-                listener.onInput(this, v.getText().toString());
-            v.setText("");
-            return true;
-        }
-        return false;
-    }
-
     public void showText(String text){
         showText(CL.getUniversalTime(), "System", text);
     }
 
-    public void showText(long clock, String from, String text){
-        if(view != null) {
-            // FIXME: Properly escape text and from.
-            ((WebView) view.findViewById(outputId)).loadUrl("javascript:(function(){"+
-                    "showText("+clock+", \""+from+"\", \""+renderText(text)+"\");"+
-                    "})()");
+    private void runScript(String text){
+        if(view != null){
+            Log.d("ocelot.channel", "Running: "+text);
+            ((WebView) view.findViewById(outputId)).loadUrl("javascript:(function(){"+text+"})()");
         }
+    }
+
+    public void showText(long clock, String from, String text){
+        runScript("showText("+clock+", "+Toolkit.prin1(from)+", "+Toolkit.prin1(renderText(text))+");");
+    }
+
+    public void showHTML(long clock, String from, String html){
+        runScript("showText("+clock+", "+Toolkit.prin1(from)+", "+Toolkit.prin1(html)+");");
+    }
+
+    public void showPayload(long clock, String from, Payload payload){
+
     }
 
     public String getInput(){
@@ -154,14 +155,24 @@ public class Channel extends Fragment  implements EditText.OnEditorActionListene
 
     public void setInput(String text){
         if(view != null) {
-            ((EditText) view.findViewById(R.id.input)).setText(text);
+            EditText input = view.findViewById(R.id.input);
+            input.setText("");
+            input.append(text);
         }
     }
 
     public String getName(){
         return name;
     }
-    public View getView() { return view; }
+
+    public void hide(){
+        view.setVisibility(View.GONE);
+    }
+
+    public void show(){
+        view.setVisibility(View.VISIBLE);
+        view.findViewById(R.id.input).requestFocus();
+    }
 
     public static Channel newInstance(String name) {
         Channel fragment = new Channel();
@@ -189,10 +200,24 @@ public class Channel extends Fragment  implements EditText.OnEditorActionListene
         WebView web = v.findViewById(R.id.output);
         web.setId(outputId);
         web.getSettings().setJavaScriptEnabled(true);
+        web.getSettings().setAllowFileAccess(true);
         web.loadDataWithBaseURL("file:///android_asset/", content, "text/html", "UTF-8", null);
 
         EditText input = (EditText) v.findViewById(R.id.input);
-        input.setOnEditorActionListener(this);
+        input.setOnEditorActionListener((TextView vw, int actionId, KeyEvent event)->{
+            if (actionId == EditorInfo.IME_ACTION_SEND ||
+                    (event != null && !event.isShiftPressed() && event.getKeyCode() == KeyEvent.KEYCODE_ENTER)){
+                if(listener != null)
+                    listener.onInput(this, vw.getText().toString());
+                vw.setText("");
+                return true;
+            }
+            return false;
+        });
+
+        v.findViewById(R.id.send_file).setOnClickListener((vw)->{
+            listener.requestSendFile(this);
+        });
 
         v.findViewById(R.id.select_emote).setOnClickListener((vw)->{
             FragmentTransaction ft = getFragmentManager().beginTransaction();
@@ -224,6 +249,7 @@ public class Channel extends Fragment  implements EditText.OnEditorActionListene
     public interface ChannelListener{
         public void onInput(Channel c, String input);
         public void registerChannel(Channel c);
-        public Payload getEmote(String name);
+        public void requestSendFile(Channel c);
+        public File getEmotePath(String name);
     }
 }
