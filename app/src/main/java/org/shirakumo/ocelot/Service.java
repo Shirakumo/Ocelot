@@ -13,6 +13,7 @@ import android.app.NotificationManager;
 import android.util.Log;
 
 import org.shirakumo.lichat.Base64;
+import org.shirakumo.lichat.CL;
 import org.shirakumo.lichat.Client;
 import org.shirakumo.lichat.Handler;
 import org.shirakumo.lichat.HandlerAdapter;
@@ -21,12 +22,13 @@ import org.shirakumo.lichat.updates.*;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.IOException;
 
 public class Service extends android.app.Service {
     public static final String NOTIFICATION_CHANNEL = "ocelot-service-channel";
 
     public final Client client = new Client();
+    public int reconnectTimeout = 30;
+    public int reconnectCounter = 0;
 
     public Service() {
     }
@@ -122,6 +124,7 @@ public class Service extends android.app.Service {
     }
 
     public void sendFile(String channel, Uri file){
+        Log.d("ocelot.service", "Sending file "+file+"...");
         try {
             ContentResolver cr = getContentResolver();
             Payload payload = new Payload(Toolkit.getUriFileName(cr, file), cr.getType(file), cr.openInputStream(file));
@@ -130,6 +133,7 @@ public class Service extends android.app.Service {
                     "content-type", payload.contentType,
                     "filename", payload.name,
                     "payload", new String(Base64.encode(payload.data)));
+            Log.d("ocelot.service", "File queued for sending.");
         }catch (Exception ex){
             Log.e("ocelot.service", "Failed to read file for sending "+file, ex);
         }
@@ -156,9 +160,18 @@ public class Service extends android.app.Service {
             }
         }
 
+        public void handle(Connect update){
+            reconnectCounter = 0;
+        }
+
         public void handle(ConnectionLost update){
             Log.i("ocelot.service", "Lost connection", update.exception);
-            // FIXME: handle reconnect
+            int timeout = reconnectCounter*reconnectTimeout;
+            Log.i("ocelot.service", "Reconnecting in "+timeout);
+            CL.sleep(timeout);
+            Log.i("ocelot.service", "Attempting reconnect...");
+            client.connect();
+            reconnectCounter++;
         }
     }
 }

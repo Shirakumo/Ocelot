@@ -1,21 +1,15 @@
 package org.shirakumo.ocelot;
 
 import android.content.Context;
-import android.content.Intent;
-import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.app.Fragment;
-import android.os.Environment;
 import android.util.Log;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.app.FragmentTransaction;
 import android.webkit.WebView;
 import android.widget.EditText;
-import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.view.KeyEvent;
 import android.view.inputmethod.EditorInfo;
@@ -23,9 +17,6 @@ import org.shirakumo.lichat.CL;
 import org.shirakumo.lichat.Payload;
 
 import java.io.File;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.TimeZone;
 import java.util.regex.Pattern;
 
 public class Channel extends Fragment{
@@ -53,7 +44,7 @@ public class Channel extends Fragment{
                     String emoteName = text.substring(start+1, end);
                     File emote = listener.getEmotePath(emoteName);
                     if(emote != null){
-                        builder.append("<img src="+Toolkit.prin1("file://"+emote.getAbsolutePath())+">");
+                        builder.append("<img class=\"emote\" src="+Toolkit.prin1("file://"+emote.getAbsolutePath())+">");
                         start = end+1;
                     }else{
                         builder.append(text, start, end);
@@ -105,23 +96,6 @@ public class Channel extends Fragment{
         return replaceEmotes(linkifyURLs(escapeHTML(text)));
     }
 
-    public String renderTimestamp(long timestamp){
-        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
-        sdf.setTimeZone(TimeZone.getDefault());
-        return sdf.format(new Date(timestamp*1000L));
-    }
-
-    public int objectColor(Object o){
-        int encoded = o.hashCode() % 0xFFF;
-        int r = 16*(1+(encoded&0xF00)>>8)-1;
-        int g = 16*(1+(encoded&0x0F0)>>4)-1;
-        int b = 16*(1+(encoded&0x00F)>>0)-1;
-
-        return Color.rgb(Math.min(200, Math.max(50, r)),
-                Math.min(180, Math.max(80, g)),
-                Math.min(180, Math.max(80, b)));
-    }
-
     public void showText(String text){
         showText(CL.getUniversalTime(), "System", text);
     }
@@ -133,16 +107,34 @@ public class Channel extends Fragment{
         }
     }
 
-    public void showText(long clock, String from, String text){
-        runScript("showText("+clock+", "+Toolkit.prin1(from)+", "+Toolkit.prin1(renderText(text))+");");
-    }
-
     public void showHTML(long clock, String from, String html){
         runScript("showText("+clock+", "+Toolkit.prin1(from)+", "+Toolkit.prin1(html)+");");
     }
 
-    public void showPayload(long clock, String from, Payload payload){
+    public void showText(long clock, String from, String text){
+        showHTML(clock, from, renderText(text));
+    }
 
+    public void showPayload(long clock, String from, Payload payload){
+        File temp = listener.getTempFile(payload.name, Toolkit.fileExtensionForMime(payload.contentType));
+        if(temp != null){
+            try{
+                payload.save(temp);
+                String path = Toolkit.prin1("file://"+escapeHTML(temp.getAbsolutePath()));
+                if(Toolkit.isImageMime(payload.contentType)) {
+                    showHTML(clock, from, "<img class=\"payload\" src="+path+">");
+                }else if(Toolkit.isAudioMime(payload.contentType)){
+                    showHTML(clock, from, "<audio class=\"payload\" controls src="+path+"><a href="+path+">"+escapeHTML(payload.name)+"</a></audio>");
+                }else if(Toolkit.isVideoMime(payload.contentType)) {
+                    showHTML(clock, from, "<video class=\"payload\" controls src="+path+"><a href="+path+">"+escapeHTML(payload.name)+"</a></video>");
+                }else{
+                    Log.w("ocelot.channel", "Cannot show payload of unknown content type "+payload.contentType);
+                    temp.delete();
+                }
+            }catch(Exception ex){
+                Log.e("ocelot.channel", "Failed to save payload to "+temp, ex);
+            }
+        }
     }
 
     public String getInput(){
@@ -158,6 +150,7 @@ public class Channel extends Fragment{
             EditText input = view.findViewById(R.id.input);
             input.setText("");
             input.append(text);
+            input.requestFocus();
         }
     }
 
@@ -251,5 +244,6 @@ public class Channel extends Fragment{
         public void registerChannel(Channel c);
         public void requestSendFile(Channel c);
         public File getEmotePath(String name);
+        public File getTempFile(String name, String type);
     }
 }

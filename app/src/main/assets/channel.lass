@@ -3,7 +3,6 @@
  (.update
   :display flex
   (>* :padding 2px 5px 2px 5px)
-  (img :max-height 30vh)
   (.clock :width 12vw
           :font-size 0.9em
           :text-align center
@@ -16,4 +15,7 @@
   (.text :word-wrap break-word
          :white-space pre-wrap
          :min-width 0px
-         :flex-grow 1)))
+         :flex-grow 1
+         (.payload
+          :max-width 100%
+          :max-height 50vh))))

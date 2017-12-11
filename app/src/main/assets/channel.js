@@ -36,24 +36,34 @@ var formatTime = function(time){
 };
 
 var showText = function(clock, from, text){
-    document.getElementById("channel").appendChild(
-        constructElement("div", {
-            classes: ["update"],
-            elements: {
-                time: {
-                    classes: ["clock"],
-                    text: formatTime(clock)
-                },
-                a: {
-                    classes: ["from"],
-                    text: from,
-                    attributes: {style: "color:"+objectColor(from)}
-                },
-                span: {
-                    classes: ["text"],
-                    html: text
-                }
+    var element = constructElement("div", {
+        classes: ["update"],
+        attributes: {"data-clock": clock},
+        elements: {
+            time: {
+                classes: ["clock"],
+                text: formatTime(clock)
+            },
+            a: {
+                classes: ["from"],
+                text: from,
+                attributes: {style: "color:"+objectColor(from)}
+            },
+            span: {
+                classes: ["text"],
+                html: text
             }
-        })
-    );
+        }
+    });
+    // Ensure in-order insert.
+    var channel = document.getElementById("channel");
+    var children = channel.children;
+    for (var i=0; i<children.length; i++) {
+        if(clock < parseInt(children[i].getAttribute("data-clock"))){
+            channel.insertBefore(element, children[i]);
+            return;
+        }
+    }
+    channel.appendChild(element);
+    element.scrollIntoView(false);
 };

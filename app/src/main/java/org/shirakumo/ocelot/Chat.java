@@ -11,11 +11,10 @@ import android.os.IBinder;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.ToggleButton;
 
 import java.io.File;
-import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -110,8 +109,9 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
             ft.commit();
             getFragmentManager().executePendingTransactions();
             // Create tab button
-            Button tab = (Button)getLayoutInflater().inflate(R.layout.channel_button, null);
-            tab.setText(name);
+            ToggleButton tab = (ToggleButton)getLayoutInflater().inflate(R.layout.channel_button, null);
+            tab.setTextOff(name);
+            tab.setTextOn(name);
             tab.setTag(channel);
             tab.setOnClickListener((View v)->showChannel(channel));
             ((LinearLayout)findViewById(R.id.tabs)).addView(tab);
@@ -140,10 +140,13 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     }
 
     public Channel showChannel(Channel toShow){
+        LinearLayout tabs = (LinearLayout)findViewById(R.id.tabs);
         for(Channel c : channels.values()){
             c.hide();
+            ((ToggleButton)tabs.findViewWithTag(c)).setChecked(false);
         }
         toShow.show();
+        ((ToggleButton)tabs.findViewWithTag(toShow)).setChecked(true);
         channel = toShow;
         return channel;
     }
@@ -168,6 +171,15 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     public File getEmotePath(String name){
         if(service == null) return null;
         return service.getEmotePath(name);
+    }
+
+    public File getTempFile(String name, String type){
+        try {
+            return File.createTempFile(name, "." + type, getCacheDir());
+        } catch(Exception ex){
+            Log.e("ocelot.chat", "Failed to create temporary file.", ex);
+            return null;
+        }
     }
 
     public void bind(){
@@ -198,7 +210,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         if (channel != null) {
             sendFileRequestMap.remove(requestCode);
             if (resultCode == RESULT_OK) {
-                Log.i("ocelot.chat", "Selected file "+data.getData());
+                Log.d("ocelot.chat", "Selected file "+data.getData());
                 service.sendFile(channel.getName(), data.getData());
             }
         }

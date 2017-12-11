@@ -66,6 +66,25 @@ public class Toolkit {
         return "";
     }
 
+    public static <T> T find(T object, T[] items){
+        for(T item : items){
+            if(object.equals(item)) return item;
+        }
+        return null;
+    }
+
+    private static final String[] imageMimes = new String[]{
+            "image/gif", "image/png", "image/svg+xml", "image/jpeg"};
+    public static boolean isImageMime(String type){ return find(type, imageMimes) != null; }
+
+    private static final String[] audioMimes = new String[]{
+            "audio/wave", "audio/wav", "audio/x-wav", "audio/x-pn-wav", "audio/vnd", "audio/webm", "audio/ogg", "audio/mpeg", "audio/mp3", "audio/mp4", "audio/flac"};
+    public static boolean isAudioMime(String type){ return find(type, audioMimes) != null; }
+
+    private static final String[] videoMimes = new String[]{
+            "video/webm", "video/mp4", "video/mp4", "application/ogg"};
+    public static boolean isVideoMime(String type){ return find(type, videoMimes) != null; }
+
     public static String fileExtensionForMime(String mime){
         // Images
         if(mime.equals("image/gif")) return "gif";
