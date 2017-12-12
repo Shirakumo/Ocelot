@@ -35,6 +35,17 @@ var formatTime = function(time){
     return pd(date.getHours())+":"+pd(date.getMinutes())+":"+pd(date.getSeconds());
 };
 
+var reloadCSS = function(){
+    var links = document.getElementsByTagName("link");
+    for(var i in links){
+        var link = links[i];
+        if(link.rel === "stylesheet"){
+            var h=link.href.replace(/(&|\?)forceReload=\d /,"");
+            link.href=h+(h.indexOf('?')>=0?'&':'?')+"forceReload="+(new Date().valueOf());
+        }
+    }
+};
+
 var showText = function(clock, from, text){
     var element = constructElement("div", {
         classes: ["update"],

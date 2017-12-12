@@ -2,12 +2,16 @@ package org.shirakumo.ocelot;
 
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.OpenableColumns;
 import android.util.Log;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -64,6 +68,12 @@ public class Toolkit {
             Log.d("Ocelot", "Failed to read asset", e);
         }
         return "";
+    }
+
+    public static void writeStringToFile(String string, File file) throws IOException{
+        BufferedWriter out = new BufferedWriter(new FileWriter(file));
+        out.write(string);
+        out.close();
     }
 
     public static <T> T find(T object, T[] items){
@@ -186,5 +196,11 @@ public class Toolkit {
         }else{
             return object.toString();
         }
+    }
+
+    public static String getColorHex(SharedPreferences prefs, String key, String def){
+        int c = prefs.getInt(key, -1);
+        if(c == -1) return def;
+        return String.format("#%06X", (0xFFFFFF & c));
     }
 }

@@ -100,7 +100,7 @@ public class Channel extends Fragment{
         showText(CL.getUniversalTime(), "System", text);
     }
 
-    private void runScript(String text){
+    public void runScript(String text){
         if(view != null){
             Log.d("ocelot.channel", "Running: "+text);
             ((WebView) view.findViewById(outputId)).loadUrl("javascript:(function(){"+text+"})()");
@@ -159,10 +159,12 @@ public class Channel extends Fragment{
     }
 
     public void hide(){
+        if(view == null) return;
         view.setVisibility(View.GONE);
     }
 
     public void show(){
+        if(view == null) return;
         view.setVisibility(View.VISIBLE);
         view.findViewById(R.id.input).requestFocus();
     }

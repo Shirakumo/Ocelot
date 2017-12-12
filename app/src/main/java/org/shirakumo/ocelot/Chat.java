@@ -3,11 +3,14 @@ package org.shirakumo.ocelot;
 import android.app.Activity;
 import android.app.FragmentTransaction;
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.ComponentName;
 import android.os.IBinder;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -24,7 +27,7 @@ import org.shirakumo.lichat.updates.Leave;
 import org.shirakumo.lichat.updates.NoSuchChannel;
 import org.shirakumo.lichat.updates.Update;
 
-public class Chat extends Activity implements Channel.ChannelListener, EmoteList.EmoteListListener{
+public class Chat extends Activity implements Channel.ChannelListener, EmoteList.EmoteListListener,  SharedPreferences.OnSharedPreferenceChangeListener{
     public static final String SYSTEM_CHANNEL = "@System";
 
     private Intent serviceIntent;
@@ -71,7 +74,24 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
             c.showText("Available commands: "+Toolkit.join((String[])commands.keySet().toArray(commandNames), ", "));
         });
 
-        ensureChannel(SYSTEM_CHANNEL);
+        addCommand("settings", (Channel c, String[] args)->{
+            Intent i = new Intent(this, Settings.class);
+            startActivity(i);
+        });
+
+        addCommand("connect", (Channel c, String[] args)->{
+            service.connect();
+        });
+
+        addCommand("disconnect", (Channel c, String[] args)->{
+            service.disconnect();
+        });
+
+        PreferenceManager.setDefaultValues(this, R.xml.settings_connection, false);
+        PreferenceManager.setDefaultValues(this, R.xml.settings_notification, false);
+        PreferenceManager.setDefaultValues(this, R.xml.settings_looks, false);
+        generateStyleSheet();
+        showChannel(ensureChannel(SYSTEM_CHANNEL));
     }
 
     @Override
@@ -182,6 +202,34 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         }
     }
 
+    public void generateStyleSheet(){
+        SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(this);
+        String style = "html{"
+                +"background:"+ Toolkit.getColorHex(pref, "color_background", "#FFF")+";"
+                +"color:"+Toolkit.getColorHex(pref, "color_foreground", "#000")+";"
+                +"font-size:"+pref.getInt("fontsize", 12)+"pt;"
+                +"}"
+                +"mark{"
+                +"background:"+Toolkit.getColorHex(pref, "color_mention", "#FF0")+";"
+                +"}"
+                +".update.self .from{"
+                +"color:"+Toolkit.getColorHex(pref, "color_self", "#000")+";"
+                +"}";
+        File file = new File(getFilesDir(), "style.css");
+        try {
+            Toolkit.writeStringToFile(style, file);
+        }catch(Exception ex){
+            Log.e("ocelot.chat", "Failed to generate style sheet "+file, ex);
+        }
+    }
+
+    public void updateStyleSheet(){
+        generateStyleSheet();
+        for(Channel c : channels.values()){
+            c.runScript("reloadCSS();");
+        }
+    }
+
     public void bind(){
         if(!bound) {
             bound = bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
@@ -221,6 +269,8 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         Log.d("ocelot.chat", "Starting");
         super.onStart();
         if(service == null) startService(serviceIntent);
+        PreferenceManager.getDefaultSharedPreferences(this)
+                .unregisterOnSharedPreferenceChangeListener(this);
         bind();
     }
 
@@ -242,6 +292,8 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     protected void onStop() {
         Log.d("ocelot.chat", "Stopping");
         super.onStop();
+        PreferenceManager.getDefaultSharedPreferences(this)
+                .registerOnSharedPreferenceChangeListener(this);
         unbind();
     }
 
@@ -268,7 +320,8 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
             binder = (ServiceBinder)ibinder;
             binder.service.addHandler(handlerWrapper);
             service = binder.service;
-            service.connect();
+            if(PreferenceManager.getDefaultSharedPreferences(Chat.this).getBoolean("autoconnect", false))
+                service.connect();
             Log.d("ocelot.chat", "Connected to service.");
         }
 
@@ -288,5 +341,12 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     @Override
     public Map<String, Payload> getEmotes() {
         return service.client.emotes;
+    }
+
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        if (key.equals("fontsize") || key.startsWith("color_")) {
+            updateStyleSheet();
+        }
     }
 }

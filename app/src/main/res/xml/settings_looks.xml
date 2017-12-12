@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:tools="http://schemas.android.com/tools"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory android:title="@string/setting_looks">
+        <SeekBarPreference
+            android:min="8"
+            android:max="36"
+            android:defaultValue="12"
+            android:key="fontsize"
+            android:title="@string/setting_look_fontsize"
+            android:summary="@string/setting_look_fontsize_summary" />
+
+        <com.rarepebble.colorpicker.ColorPreference
+            android:defaultValue="#000"
+            android:key="color_self"
+            android:title="@string/setting_look_self"
+            android:summary="@string/setting_look_self_summary" />
+        <com.rarepebble.colorpicker.ColorPreference
+            android:defaultValue="#F5F5F5"
+            android:key="color_background"
+            android:title="@string/setting_look_background"
+            android:summary="@string/setting_look_background_summary" />
+        <com.rarepebble.colorpicker.ColorPreference
+            android:defaultValue="#111"
+            android:key="color_foreground"
+            android:title="@string/setting_look_foreground"
+            android:summary="@string/setting_look_foreground_summary" />
+        <com.rarepebble.colorpicker.ColorPreference
+            android:defaultValue="#FF0"
+            android:key="color_mention"
+            android:title="@string/setting_look_mention"
+            android:summary="@string/setting_look_mention_summary" />
+    </PreferenceCategory>
+</PreferenceScreen>

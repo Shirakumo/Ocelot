@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<preference-headers xmlns:tools="http://schemas.android.com/tools"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <header
+        android:fragment="org.shirakumo.ocelot.Settings$Connection"
+        android:icon="@drawable/ic_settings_ethernet_black_24dp"
+        android:title="@string/setting_connection"
+        android:summary="@string/setting_connection_summary" />
+
+    <header
+        android:fragment="org.shirakumo.ocelot.Settings$Notification"
+        android:icon="@drawable/ic_notifications_black_24dp"
+        android:title="@string/setting_notification"
+        android:summary="@string/setting_notification_summary" />
+
+    <header
+        android:fragment="org.shirakumo.ocelot.Settings$Looks"
+        android:icon="@drawable/ic_looks_black_24dp"
+        android:title="@string/setting_looks"
+        android:summary="@string/setting_looks_summary" />
+</preference-headers>

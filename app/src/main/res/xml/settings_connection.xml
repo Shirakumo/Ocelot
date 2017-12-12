@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory android:title="@string/setting_connection">
+
+        <EditTextPreference
+            android:defaultValue="Ocelot"
+            android:key="username"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="@string/setting_username"
+            android:summary="@string/setting_username_summary" />
+        <EditTextPreference
+            android:inputType="textPassword"
+            android:key="password"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="@string/setting_password"
+            android:summary="@string/setting_password_summary" />
+        <EditTextPreference
+            android:defaultValue="chat.tymoon.eu"
+            android:key="server"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="@string/setting_hostname"
+            android:summary="@string/setting_hostname_summary" />
+        <EditTextPreference
+            android:defaultValue="1111"
+            android:inputType="numberDecimal"
+            android:key="port"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="@string/setting_port"
+            android:summary="@string/setting_port_summary" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="auto_connect"
+            android:title="@string/setting_autoconnect"
+            android:summary="@string/setting_autoconnect_summary" />
+    </PreferenceCategory>
+</PreferenceScreen>

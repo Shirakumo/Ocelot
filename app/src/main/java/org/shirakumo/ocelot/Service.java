@@ -5,11 +5,14 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.app.PendingIntent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
 import android.app.Notification;
 import android.app.NotificationManager;
+import android.preference.Preference;
+import android.preference.PreferenceManager;
 import android.util.Log;
 
 import org.shirakumo.lichat.Base64;
@@ -86,11 +89,14 @@ public class Service extends android.app.Service {
 
     public void connect(){
         if(!client.isConnected()) {
-            client.username = "Ocelot";
-            client.hostname = "10.0.2.2";
-            client.port = 1111;
+            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+            client.username = prefs.getString("username", "");
+            client.password = prefs.getString("password", "");
+            if(client.password.isEmpty()) client.password = null;
+            client.hostname = prefs.getString("hostname", "");
+            client.port = Integer.parseInt(prefs.getString("port", ""));
             client.connect();
-            Log.d("ocelot.service", "Started connection.");
+            Log.d("ocelot.service", "Connecting to "+client.username+"/"+client.password+"@"+client.hostname+":"+client.port);
         }
     }
 
