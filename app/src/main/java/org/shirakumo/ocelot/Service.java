@@ -25,6 +25,7 @@ import org.shirakumo.lichat.updates.*;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.util.HashSet;
 
 public class Service extends android.app.Service {
     public static final String NOTIFICATION_CHANNEL = "ocelot-service-channel";
@@ -76,7 +77,7 @@ public class Service extends android.app.Service {
 
         builder.setContentTitle(getText(R.string.notification_title))
                 .setContentText(getText(R.string.notification_message))
-                .setSmallIcon(R.drawable.ic_settings_ethernet_black_24dp)
+                .setSmallIcon(R.drawable.ic_ocelot)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true);
 
@@ -128,7 +129,7 @@ public class Service extends android.app.Service {
 
         builder.setContentTitle(from+" says:")
                 .setContentText(content)
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setSmallIcon(R.drawable.ic_ocelot)
                 .setNumber(notificationCounter)
                 .setDeleteIntent(pendingDelete)
                 .setContentIntent(pendingAccept)
@@ -140,11 +141,11 @@ public class Service extends android.app.Service {
     public void connect(){
         if(!client.isConnected()) {
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-            client.username = prefs.getString("username", null);
+            client.username = prefs.getString("username", "Ocelot");
             client.password = prefs.getString("password", "");
             if(client.password.isEmpty()) client.password = null;
-            client.hostname = prefs.getString("hostname", null);
-            client.port = Integer.parseInt(prefs.getString("port", null));
+            client.hostname = prefs.getString("hostname", "chat.tymoon.eu");
+            client.port = Integer.parseInt(prefs.getString("port", "1111"));
             client.connect();
             Log.d("ocelot.service", "Connecting to "+client.username+"/"+client.password+"@"+client.hostname+":"+client.port);
         }
@@ -244,6 +245,10 @@ public class Service extends android.app.Service {
 
         public void handle(Connect update){
             reconnectCounter = 0;
+            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(Service.this);
+            for(String channel : prefs.getStringSet("channels", new HashSet<>())){
+                client.s("JOIN", "channel", channel);
+            }
         }
 
         public void handle(ConnectionLost update){

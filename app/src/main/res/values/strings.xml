@@ -16,6 +16,8 @@
     <string name="setting_port_summary">The TCP port to connect to the server with</string>
     <string name="setting_autoconnect">Connect on start</string>
     <string name="setting_autoconnect_summary">Whether to immediately connect when Ocelot starts</string>
+    <string name="setting_channels">Channels to join</string>
+    <string name="setting_channels_summary">Which channels to join after connecting</string>
     <string name="setting_notification">Notification</string>
     <string name="setting_notification_summary">How and when to display notifications</string>
     <string name="setting_notifications">Show Notifications</string>
