@@ -92,6 +92,8 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         PreferenceManager.setDefaultValues(this, R.xml.settings_looks, false);
         generateStyleSheet();
         showChannel(ensureChannel(SYSTEM_CHANNEL));
+
+        // FIXME: handle existing channels in client and show requested channel from launch intent.
     }
 
     @Override
@@ -188,6 +190,10 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         return command;
     }
 
+    public String getUsername(){
+        return (service == null)? null : service.client.username;
+    }
+
     public File getEmotePath(String name){
         if(service == null) return null;
         return service.getEmotePath(name);
@@ -212,7 +218,11 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
                 +"mark{"
                 +"background:"+Toolkit.getColorHex(pref, "color_mention", "#FF0")+";"
                 +"}"
-                +".update.self .from{"
+                +"#channel .update .from{"
+                +"min-width:"+(7*pref.getInt("fontsize", 12))+"pt;"
+                +"max-width:"+(7*pref.getInt("fontsize", 12))+"pt;"
+                +"}"
+                +"#channel .update.self .from{"
                 +"color:"+Toolkit.getColorHex(pref, "color_self", "#000")+";"
                 +"}";
         File file = new File(getFilesDir(), "style.css");
@@ -308,7 +318,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     }
 
     private ServiceConnection serviceConnection = new ServiceConnection() {
-        ServiceBinder binder;
+        Service.Binder binder;
         Handler handlerWrapper = (Update update)->{
             runOnUiThread(()->{
                 handler.handle(update);
@@ -317,9 +327,9 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
 
         @Override
         public void onServiceConnected(ComponentName className, IBinder ibinder) {
-            binder = (ServiceBinder)ibinder;
-            binder.service.addHandler(handlerWrapper);
-            service = binder.service;
+            binder = (Service.Binder)ibinder;
+            service = binder.bind(Chat.this);
+            service.addHandler(handlerWrapper);
             if(PreferenceManager.getDefaultSharedPreferences(Chat.this).getBoolean("autoconnect", false))
                 service.connect();
             Log.d("ocelot.chat", "Connected to service.");
@@ -327,8 +337,9 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
 
         @Override
         public void onServiceDisconnected(ComponentName arg0) {
-            binder.service.removeHandler(handlerWrapper);
-            service = null;
+            service.removeHandler(handlerWrapper);
+            service = binder.unbind();
+            binder = null;
             Log.d("ocelot.chat", "Disconnected from service.");
         }
     };
@@ -345,6 +356,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        updateStyleSheet();
         if (key.equals("fontsize") || key.startsWith("color_")) {
             updateStyleSheet();
         }

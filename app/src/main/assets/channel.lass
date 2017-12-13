@@ -3,12 +3,11 @@
  (.update
   :display flex
   (>* :padding 2px 5px 2px 5px)
-  (.clock :width 12vw
-          :font-size 0.9em
+  (.clock :font-size 0.9em
           :text-align center
           :vertical-align middle)
-  (.from :min-width 12vw
-         :max-width 12vw
+  (.from :min-width 182pt
+         :max-width 182pt
          :overflow hidden
          :white-space nowrap
          :text-overflow ellipsis)

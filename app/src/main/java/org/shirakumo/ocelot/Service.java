@@ -28,10 +28,16 @@ import java.io.FileInputStream;
 
 public class Service extends android.app.Service {
     public static final String NOTIFICATION_CHANNEL = "ocelot-service-channel";
+    public static final int SERVICE_NOTIFICATION = 1;
+    public static final int UPDATE_NOTIFICATION = 2;
+    public static final int ACTION_DISMISS_NOTIFICATION = 1;
+    public static final int ACTION_ACCEPT_NOTIFICATION = 2;
 
     public final Client client = new Client();
     public int reconnectTimeout = 30;
     public int reconnectCounter = 0;
+    private int notificationCounter = 0;
+    private Chat chat;
 
     public Service() {
     }
@@ -61,7 +67,7 @@ public class Service extends android.app.Service {
 
         Notification.Builder builder;
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            ((NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE)).createNotificationChannel(
+            ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(
                     new NotificationChannel(NOTIFICATION_CHANNEL, NOTIFICATION_CHANNEL, NotificationManager.IMPORTANCE_LOW));
             builder = new Notification.Builder(this, NOTIFICATION_CHANNEL);
         } else {
@@ -74,11 +80,27 @@ public class Service extends android.app.Service {
                 .setContentIntent(pendingIntent)
                 .setOngoing(true);
 
-        startForeground(1, builder.build());
+        startForeground(SERVICE_NOTIFICATION, builder.build());
         Log.d("ocelot.service", "Created");
     }
 
+    @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        switch(intent.getIntExtra("action", -1)) {
+            case ACTION_DISMISS_NOTIFICATION:
+                notificationCounter = 0;
+                break;
+            case ACTION_ACCEPT_NOTIFICATION:
+                notificationCounter = 0;
+                if(chat != null){
+                    chat.showChannel(intent.getStringExtra("channel"));
+                }else{
+                    Intent showChat = new Intent(this, Chat.class);
+                    showChat.putExtra("channel", intent.getStringExtra("channel"));
+                    startActivity(showChat);
+                }
+                break;
+        }
         return android.app.Service.START_NOT_STICKY;
     }
 
@@ -87,14 +109,42 @@ public class Service extends android.app.Service {
         disconnect();
     }
 
+    public void showUpdateNotification(String channel, String from, String content){
+        notificationCounter++;
+
+        Intent deleteIntent = new Intent(this, Service.class);
+        deleteIntent.putExtra("action", ACTION_DISMISS_NOTIFICATION);
+        PendingIntent pendingDelete = PendingIntent.getService(this, 0, deleteIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        Intent acceptIntent = new Intent(this, Service.class);
+        acceptIntent.putExtra("action", ACTION_ACCEPT_NOTIFICATION);
+        acceptIntent.putExtra("channel", channel);
+        PendingIntent pendingAccept = PendingIntent.getService(this, 0, acceptIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        Notification.Builder builder = new Notification.Builder(this);
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            builder.setChannelId(NOTIFICATION_CHANNEL);
+        }
+
+        builder.setContentTitle(from+" says:")
+                .setContentText(content)
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setNumber(notificationCounter)
+                .setDeleteIntent(pendingDelete)
+                .setContentIntent(pendingAccept)
+                .setAutoCancel(true);
+
+        ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(UPDATE_NOTIFICATION, builder.build());
+    }
+
     public void connect(){
         if(!client.isConnected()) {
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-            client.username = prefs.getString("username", "");
+            client.username = prefs.getString("username", null);
             client.password = prefs.getString("password", "");
             if(client.password.isEmpty()) client.password = null;
-            client.hostname = prefs.getString("hostname", "");
-            client.port = Integer.parseInt(prefs.getString("port", ""));
+            client.hostname = prefs.getString("hostname", null);
+            client.port = Integer.parseInt(prefs.getString("port", null));
             client.connect();
             Log.d("ocelot.service", "Connecting to "+client.username+"/"+client.password+"@"+client.hostname+":"+client.port);
         }
@@ -147,7 +197,21 @@ public class Service extends android.app.Service {
 
     @Override
     public IBinder onBind(Intent intent) {
-        return new ServiceBinder(this);
+        return new Binder();
+    }
+
+    class Binder extends android.os.Binder{
+        public Binder(){}
+
+        public Service bind(Chat chat){
+            Service.this.chat = chat;
+            return Service.this;
+        }
+
+        public Service unbind(){
+            Service.this.chat = null;
+            return null;
+        }
     }
 
     private class UpdateHandler extends HandlerAdapter{
@@ -166,6 +230,18 @@ public class Service extends android.app.Service {
             }
         }
 
+        public void handle(Message update){
+            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(Service.this);
+            if(!update.from.equals(client.username)
+                    && (chat == null || !update.channel.equals(chat.getChannel().getName()))
+                    && (prefs.getBoolean("notifications", false)
+                     && prefs.getBoolean("notify_message", false)
+                     || (prefs.getBoolean("notify_mention", false)
+                      && Toolkit.mentionsUser(update.text, client.username)))){
+                showUpdateNotification(update.channel, update.from, update.text);
+            }
+        }
+
         public void handle(Connect update){
             reconnectCounter = 0;
         }
@@ -173,11 +249,13 @@ public class Service extends android.app.Service {
         public void handle(ConnectionLost update){
             Log.i("ocelot.service", "Lost connection", update.exception);
             int timeout = reconnectCounter*reconnectTimeout;
+            reconnectCounter++;
             Log.i("ocelot.service", "Reconnecting in "+timeout);
             CL.sleep(timeout);
-            Log.i("ocelot.service", "Attempting reconnect...");
-            client.connect();
-            reconnectCounter++;
+            if(0 < reconnectCounter) {
+                Log.i("ocelot.service", "Attempting reconnect...");
+                client.connect();
+            }
         }
     }
 }

@@ -92,8 +92,34 @@ public class Channel extends Fragment{
         });
     }
 
+    public String markSelf(String text){
+        String username = listener.getUsername();
+        if(username == null) return text;
+        StringBuilder buf = new StringBuilder();
+        boolean inLink = false;
+        int i=0;
+        for(; i<text.length()-username.length(); i++){
+            if(!inLink){
+                CharSequence seq = text.subSequence(i, i+username.length());
+                if(seq.equals(username)){
+                    buf.append("<mark>"+seq+"</mark>");
+                    i += username.length()-1;
+                    continue;
+                }
+                if(text.charAt(i) == '<' && i+1<text.length() && text.charAt(i+1) == 'a'){
+                    inLink = true;
+                }
+            }else if(inLink && text.charAt(i) == '>'){
+                inLink = false;
+            }
+            buf.append(text.charAt(i));
+        }
+        buf.append(text, i, text.length());
+        return buf.toString();
+    }
+
     public String renderText(String text){
-        return replaceEmotes(linkifyURLs(escapeHTML(text)));
+        return replaceEmotes(markSelf(linkifyURLs(escapeHTML(text))));
     }
 
     public void showText(String text){
@@ -108,7 +134,11 @@ public class Channel extends Fragment{
     }
 
     public void showHTML(long clock, String from, String html){
-        runScript("showText("+clock+", "+Toolkit.prin1(from)+", "+Toolkit.prin1(html)+");");
+        runScript("showText({"
+                +"source:"+Toolkit.prin1(from.equals(listener.getUsername())?"self":"other")+","
+                +"clock:"+Toolkit.prin1(clock)+","
+                +"from:"+Toolkit.prin1(from)+","
+                +"text:"+Toolkit.prin1(html)+"});");
     }
 
     public void showText(long clock, String from, String text){
@@ -245,6 +275,7 @@ public class Channel extends Fragment{
         public void onInput(Channel c, String input);
         public void registerChannel(Channel c);
         public void requestSendFile(Channel c);
+        public String getUsername();
         public File getEmotePath(String name);
         public File getTempFile(String name, String type);
     }

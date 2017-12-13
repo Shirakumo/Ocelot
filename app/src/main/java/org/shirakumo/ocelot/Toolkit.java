@@ -203,4 +203,8 @@ public class Toolkit {
         if(c == -1) return def;
         return String.format("#%06X", (0xFFFFFF & c));
     }
+
+    public static boolean mentionsUser(String text, String user){
+        return Pattern.compile("\\b"+Pattern.quote(user)+"\\b").matcher(text).find();
+    }
 }

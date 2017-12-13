@@ -40,29 +40,29 @@ var reloadCSS = function(){
     for(var i in links){
         var link = links[i];
         if(link.rel === "stylesheet"){
-            var h=link.href.replace(/(&|\?)forceReload=\d /,"");
+            var h = link.href.replace(/(&|\?)forceReload=\d /,"");
             link.href=h+(h.indexOf('?')>=0?'&':'?')+"forceReload="+(new Date().valueOf());
         }
     }
 };
 
-var showText = function(clock, from, text){
+var showText = function(update){
     var element = constructElement("div", {
-        classes: ["update"],
-        attributes: {"data-clock": clock},
+        classes: ["update", update.source],
+        attributes: {"data-clock": update.clock},
         elements: {
             time: {
                 classes: ["clock"],
-                text: formatTime(clock)
+                text: formatTime(update.clock)
             },
             a: {
                 classes: ["from"],
-                text: from,
-                attributes: {style: "color:"+objectColor(from)}
+                text: update.from,
+                attributes: {style: "color:"+objectColor(update.from)}
             },
             span: {
                 classes: ["text"],
-                html: text
+                html: update.text
             }
         }
     });
@@ -70,7 +70,7 @@ var showText = function(clock, from, text){
     var channel = document.getElementById("channel");
     var children = channel.children;
     for (var i=0; i<children.length; i++) {
-        if(clock < parseInt(children[i].getAttribute("data-clock"))){
+        if(update.clock < parseInt(children[i].getAttribute("data-clock"))){
             channel.insertBefore(element, children[i]);
             return;
         }

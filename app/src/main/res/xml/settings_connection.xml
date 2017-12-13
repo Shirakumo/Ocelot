@@ -18,7 +18,7 @@
             android:summary="@string/setting_password_summary" />
         <EditTextPreference
             android:defaultValue="chat.tymoon.eu"
-            android:key="server"
+            android:key="hostname"
             android:selectAllOnFocus="true"
             android:singleLine="true"
             android:title="@string/setting_hostname"
@@ -33,7 +33,7 @@
             android:summary="@string/setting_port_summary" />
         <SwitchPreference
             android:defaultValue="false"
-            android:key="auto_connect"
+            android:key="autoconnect"
             android:title="@string/setting_autoconnect"
             android:summary="@string/setting_autoconnect_summary" />
     </PreferenceCategory>

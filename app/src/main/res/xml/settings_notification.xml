@@ -3,12 +3,12 @@
     <PreferenceCategory android:title="@string/setting_notification">
 
         <SwitchPreference
-            android:defaultValue="false"
+            android:defaultValue="true"
             android:key="notifications"
             android:title="@string/setting_notifications"
             android:summary="@string/setting_notifications_summary" />
         <SwitchPreference
-            android:defaultValue="false"
+            android:defaultValue="true"
             android:dependency="notifications"
             android:key="notify_mention"
             android:title="@string/setting_notify_mention"
@@ -16,7 +16,7 @@
         <SwitchPreference
             android:defaultValue="false"
             android:dependency="notifications"
-            android:key="notify_mention"
+            android:key="notify_message"
             android:title="@string/setting_notify_message"
             android:summary="@string/setting_notify_message_summary" />
         <RingtonePreference
