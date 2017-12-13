@@ -76,7 +76,7 @@ public class Service extends android.app.Service {
 
         builder.setContentTitle(getText(R.string.notification_title))
                 .setContentText(getText(R.string.notification_message))
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setSmallIcon(R.drawable.ic_settings_ethernet_black_24dp)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true);
 
