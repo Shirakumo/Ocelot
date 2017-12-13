@@ -31,7 +31,7 @@ var objectColor = function(object){
 
 var formatTime = function(time){
     var date = new Date(time*1000);
-    var pd = (a)=>{return (a<10)?"0"+a:""+a;}
+    var pd = function(a){return (a<10)?"0"+a:""+a;}
     return pd(date.getHours())+":"+pd(date.getMinutes())+":"+pd(date.getSeconds());
 };
 
