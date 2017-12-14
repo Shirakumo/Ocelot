@@ -151,6 +151,8 @@ public class Channel extends Fragment{
                 +"text:"+Toolkit.prin1(html)+"});");
     }
 
+    public void showHTML(String text){ showHTML(CL.getUniversalTime(), "System", text); }
+
     public void showText(String text){
         showText(CL.getUniversalTime(), "System", text);
     }
@@ -227,6 +229,7 @@ public class Channel extends Fragment{
         if (getArguments() != null) {
             name = getArguments().getString(ARG_NAME);
         }
+        listener.registerChannel(this);
     }
 
     @Override
@@ -272,6 +275,7 @@ public class Channel extends Fragment{
             EmoteList.newInstance().show(ft, "emotes");
         });
 
+        v.setVisibility(View.GONE);
         return v;
     }
 
@@ -280,7 +284,6 @@ public class Channel extends Fragment{
         super.onAttach(context);
         try {
             listener = (ChannelListener) context;
-            listener.registerChannel(this);
         } catch (ClassCastException e) {
             throw new ClassCastException(context.toString()
                     + " must implement ChannelListener");
@@ -291,6 +294,10 @@ public class Channel extends Fragment{
     public void onDetach() {
         super.onDetach();
         listener = null;
+    }
+
+    public String toString(){
+        return "#<CHANNEL "+name+">";
     }
 
     public interface ChannelListener{

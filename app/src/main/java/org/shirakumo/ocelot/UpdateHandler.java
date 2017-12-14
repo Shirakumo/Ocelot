@@ -17,7 +17,7 @@ public class UpdateHandler extends HandlerAdapter {
     }
 
     public void handle(Join update){
-        chat.showChannel(chat.ensureChannel(update.channel));
+        chat.ensureChannel(update.channel);
         chat.getChannel(update.channel).showText(update.clock, update.from, " ** Joined "+update.channel);
     }
 

@@ -8,6 +8,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.provider.OpenableColumns;
 import android.util.Log;
+import android.util.TypedValue;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -199,10 +200,16 @@ public class Toolkit {
         }
     }
 
-    public static String getColorHex(SharedPreferences prefs, Resources res, String key, int defAttr){
+    public static String getColorHex(SharedPreferences prefs, Resources.Theme theme, String key, int defAttr){
         int c = prefs.getInt(key, -1);
         if(c == -1){
-            return String.format("#%06X", res.getColor(defAttr));
+            TypedValue tv = new TypedValue();
+            theme.resolveAttribute(defAttr, tv, true);
+            if(tv.type >= TypedValue.TYPE_FIRST_COLOR_INT && tv.type <= TypedValue.TYPE_LAST_COLOR_INT){
+                c = tv.data;
+            }else{
+                c = 0;
+            }
         }
         return String.format("#%06X", (0xFFFFFF & c));
     }

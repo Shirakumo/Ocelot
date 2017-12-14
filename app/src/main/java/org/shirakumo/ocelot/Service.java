@@ -25,7 +25,9 @@ import org.shirakumo.lichat.updates.*;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 
 public class Service extends android.app.Service {
     public static final String NOTIFICATION_CHANNEL = "ocelot-service-channel";
@@ -39,6 +41,7 @@ public class Service extends android.app.Service {
     public int reconnectCounter = 0;
     private int notificationCounter = 0;
     private Chat chat;
+    private final List<Update> updates = new ArrayList<>();
 
     public Service() {
     }
@@ -158,14 +161,6 @@ public class Service extends android.app.Service {
         }
     }
 
-    public void addHandler(Handler handler){
-        client.addHandler(handler);
-    }
-
-    public void removeHandler(Handler handler){
-        client.removeHandler(handler);
-    }
-
     public File[] getEmotePaths(){
         File[] files = new File(getFilesDir(), "emotes/").listFiles();
         return (files == null)? new File[0] : files;
@@ -196,26 +191,59 @@ public class Service extends android.app.Service {
         }
     }
 
+    public void replayUpdates(long since, Handler handler){
+        // FIXME: do binary search for earliest matching update.
+        if(updates.isEmpty()) return;
+        int i = 0;
+        while(updates.get(i).clock < since) i++;
+        for(; i<updates.size(); i++){
+            handler.handle(updates.get(i));
+        }
+    }
+
     @Override
     public IBinder onBind(Intent intent) {
         return new Binder();
     }
 
+    @Override
+    public boolean onUnbind(Intent intent) {
+        return super.onUnbind(intent);
+    }
+
     class Binder extends android.os.Binder{
         public Binder(){}
 
-        public Service bind(Chat chat){
-            Service.this.chat = chat;
+        public Service bind(Chat toBind){
+            Log.d("ocelot.service", "Bound to "+toBind);
+            client.addHandler(toBind);
+            chat = toBind;
             return Service.this;
         }
 
         public Service unbind(){
-            Service.this.chat = null;
+            if(chat == null) return null;
+            Log.d("ocelot.service", "Unbound from chat.");
+            client.removeHandler(chat);
+            chat = null;
             return null;
+        }
+
+        public Service getService(){
+            return Service.this;
+        }
+
+        public Client getClient(){
+            return client;
         }
     }
 
     private class UpdateHandler extends HandlerAdapter{
+
+        public void handle(Update update){
+            updates.add(update);
+            super.handle(update);
+        }
 
         public void handle(Emote emote){
             Payload payload = client.emotes.get(emote.name);
@@ -235,9 +263,9 @@ public class Service extends android.app.Service {
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(Service.this);
             if(!update.from.equals(client.username)
                     && (chat == null || !update.channel.equals(chat.getChannel().getName()))
-                    && (prefs.getBoolean("notifications", false)
+                    && (prefs.getBoolean("notifications", true)
                      && prefs.getBoolean("notify_message", false)
-                     || (prefs.getBoolean("notify_mention", false)
+                     || (prefs.getBoolean("notify_mention", true)
                       && Toolkit.mentionsUser(update.text, client.username)))){
                 showUpdateNotification(update.channel, update.from, update.text);
             }

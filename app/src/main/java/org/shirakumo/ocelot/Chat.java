@@ -16,28 +16,31 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
+import android.widget.Toast;
 import android.widget.ToggleButton;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.shirakumo.lichat.CL;
 import org.shirakumo.lichat.Handler;
 import org.shirakumo.lichat.Payload;
 import org.shirakumo.lichat.updates.Leave;
 import org.shirakumo.lichat.updates.NoSuchChannel;
 import org.shirakumo.lichat.updates.Update;
 
-public class Chat extends Activity implements Channel.ChannelListener, EmoteList.EmoteListListener,  SharedPreferences.OnSharedPreferenceChangeListener{
+public class Chat extends Activity implements Channel.ChannelListener, EmoteList.EmoteListListener,  SharedPreferences.OnSharedPreferenceChangeListener, Handler{
     public static final String SYSTEM_CHANNEL = "@System";
 
     private Intent serviceIntent;
     private UpdateHandler handler;
-    private boolean bound = false;
-    private Service service;
     private HashMap<String, Channel> channels;
     private HashMap<String, Command> commands;
     private Channel channel;
+    private long lastSeen = 0;
+    private Service.Binder binder;
 
     @Override
     protected void onCreate(Bundle savedInstanceState){
@@ -49,30 +52,32 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         commands = new HashMap<>();
 
         addCommand("join", (Channel c, String[] args)->{
-            service.client.s("JOIN",
+            binder.getClient().s("JOIN",
                     "channel", Toolkit.join(args, " ", 1));
         });
 
         addCommand("leave", (Channel c, String[] args)->{
-            service.client.s("LEAVE",
+            binder.getClient().s("LEAVE",
                     "channel", (args.length == 1)? c.getName() : Toolkit.join(args, " ", 1));
         });
 
         addCommand("close", (Channel c, String[] args)->{
-            Object id = ((Update)service.client.s("LEAVE","channel", c.getName())).id;
-            service.client.addCallback((Integer)id, (Update u)->{
+            Object id = ((Update)binder.getClient().s("LEAVE","channel", c.getName())).id;
+            binder.getClient().addCallback((Integer)id, (Update u)->{
                 if(u instanceof Leave || u instanceof NoSuchChannel) removeChannel(c);
             });
         });
 
         addCommand("create", (Channel c, String[] args)->{
-            service.client.s("CREATE",
+            binder.getClient().s("CREATE",
                     "channel", (args.length == 1)? null : Toolkit.join(args, " ", 1));
         });
 
         addCommand("help", (Channel c, String[] args)->{
             String[] commandNames = new String[commands.keySet().size()];
-            c.showText("Available commands: "+Toolkit.join((String[])commands.keySet().toArray(commandNames), ", "));
+            commandNames = (String[])commands.keySet().toArray(commandNames);
+            Arrays.sort(commandNames);
+            c.showHTML("Available commands:<br>"+Toolkit.join(commandNames, "<br>"));
         });
 
         addCommand("settings", (Channel c, String[] args)->{
@@ -81,27 +86,30 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         });
 
         addCommand("connect", (Channel c, String[] args)->{
-            service.connect();
+            binder.getService().connect();
         });
 
         addCommand("disconnect", (Channel c, String[] args)->{
-            service.disconnect();
+            binder.getService().disconnect();
         });
 
         final SharedPreferences hasDefaults = getSharedPreferences(PreferenceManager.KEY_HAS_SET_DEFAULT_VALUES, Context.MODE_PRIVATE);
         if(!hasDefaults.getBoolean(PreferenceManager.KEY_HAS_SET_DEFAULT_VALUES, false)) {
-            PreferenceManager.setDefaultValues(this, R.xml.settings_connection, false);
+            PreferenceManager.setDefaultValues(this, R.xml.settings_connection, true);
             PreferenceManager.setDefaultValues(this, R.xml.settings_notification, true);
             PreferenceManager.setDefaultValues(this, R.xml.settings_looks, true);
         }
 
         generateStyleSheet();
         showChannel(ensureChannel(SYSTEM_CHANNEL));
+        commands.get("help").execute(getChannel(), null);
+        String channelToShow = getIntent().getStringExtra("channel");
+        if(channelToShow != null) showChannel(ensureChannel(channelToShow));
     }
 
     @Override
     public void onInput(Channel c, String input){
-        if(service == null) return;
+        if(binder == null) return;
         if(input.isEmpty()) return;
 
         if(input.startsWith("/")){
@@ -113,34 +121,34 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
                 c.showText("No such command "+args[0]);
             }
         }else{
-            service.client.s("MESSAGE",
+            binder.getClient().s("MESSAGE",
                     "channel", c.getName(),
                     "text", input);
         }
     }
 
     @Override
-    public void registerChannel(Channel c){
-        channels.put(c.getName(), c);
+    public void registerChannel(Channel channel){
+        channels.put(channel.getName(), channel);
+        // Create tab button
+        ToggleButton tab = (ToggleButton)getLayoutInflater().inflate(R.layout.channel_button, null);
+        tab.setTextOff(channel.getName());
+        tab.setTextOn(channel.getName());
+        tab.setTag(channel);
+        tab.setOnClickListener((View v)->showChannel(channel));
+        ((LinearLayout)findViewById(R.id.tabs)).addView(tab);
+        Log.d("ocelot.chat", "Registered channel "+channel);
     }
 
     public Channel ensureChannel(String name){
         if(!channels.containsKey(name)){
             // Create channel fragment
             Channel channel = Channel.newInstance(name);
-            channels.put(name, channel);
             FragmentTransaction ft = getFragmentManager().beginTransaction();
             ft.add(R.id.channel, channel);
             ft.commit();
             getFragmentManager().executePendingTransactions();
-            // Create tab button
-            ToggleButton tab = (ToggleButton)getLayoutInflater().inflate(R.layout.channel_button, null);
-            tab.setTextOff(name);
-            tab.setTextOn(name);
-            tab.setTag(channel);
-            tab.setOnClickListener((View v)->showChannel(channel));
-            ((LinearLayout)findViewById(R.id.tabs)).addView(tab);
-            Log.d("ocelot.chat", "Added channel "+name);
+            Log.d("ocelot.chat", "Created channel "+name);
         }
         return getChannel(name);
     }
@@ -194,12 +202,12 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     }
 
     public String getUsername(){
-        return (service == null)? null : service.client.username;
+        return (binder == null)? null : binder.getClient().username;
     }
 
     public File getEmotePath(String name){
-        if(service == null) return null;
-        return service.getEmotePath(name);
+        if(binder.getClient() == null) return null;
+        return binder.getService().getEmotePath(name);
     }
 
     public File getTempFile(String name, String type){
@@ -213,7 +221,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
 
     public void generateStyleSheet(){
         SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(this);
-        Resources res = getResources();
+        Resources.Theme res = getTheme();
         String style = "html{"
                 +"background:"+ Toolkit.getColorHex(pref, res, "color_background", android.R.attr.colorBackground)+";"
                 +"color:"+Toolkit.getColorHex(pref, res, "color_foreground", android.R.attr.colorForeground)+";"
@@ -245,15 +253,17 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     }
 
     public void bind(){
-        if(!bound) {
-            bound = bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
+        if(binder == null) {
+            bindService(serviceIntent, serviceConnection, Context.BIND_IMPORTANT);
         }
     }
 
     public void unbind(){
-        if(bound){
+        if(binder != null){
             unbindService(serviceConnection);
-            bound = false;
+            lastSeen = CL.getUniversalTime();
+            binder.unbind();
+            binder = null;
         }
     }
 
@@ -273,7 +283,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
             sendFileRequestMap.remove(requestCode);
             if (resultCode == RESULT_OK) {
                 Log.d("ocelot.chat", "Selected file "+data.getData());
-                service.sendFile(channel.getName(), data.getData());
+                binder.getService().sendFile(channel.getName(), data.getData());
             }
         }
     }
@@ -282,9 +292,9 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     protected void onStart() {
         Log.d("ocelot.chat", "Starting");
         super.onStart();
-        if(service == null) startService(serviceIntent);
+        if(binder == null) startService(serviceIntent);
         PreferenceManager.getDefaultSharedPreferences(this)
-                .unregisterOnSharedPreferenceChangeListener(this);
+                .registerOnSharedPreferenceChangeListener(this);
         bind();
     }
 
@@ -307,7 +317,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         Log.d("ocelot.chat", "Stopping");
         super.onStop();
         PreferenceManager.getDefaultSharedPreferences(this)
-                .registerOnSharedPreferenceChangeListener(this);
+                .unregisterOnSharedPreferenceChangeListener(this);
         unbind();
     }
 
@@ -315,39 +325,47 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     protected void onDestroy() {
         Log.d("ocelot.chat", "Destroying");
         super.onDestroy();
-        if(service != null) {
-            service.disconnect();
-            stopService(serviceIntent);
+    }
+
+    private boolean backPressed = false;
+    @Override
+    public void onBackPressed() {
+        if(backPressed) {
+            if(binder != null) {
+                binder.getService().disconnect();
+                stopService(serviceIntent);
+            }
+            super.onBackPressed();
+        }else{
+            backPressed = true;
+            Toast.makeText(this, "Press BACK again to disconnect.", Toast.LENGTH_SHORT).show();
+            new android.os.Handler().postDelayed(()->{
+                backPressed = false;
+            }, 3000);
         }
     }
 
-    private ServiceConnection serviceConnection = new ServiceConnection() {
-        Service.Binder binder;
-        Handler handlerWrapper = (Update update)->{
-            runOnUiThread(()->{
-                handler.handle(update);
-            });
-        };
+    public void handle(Update update){
+        runOnUiThread(()->{
+            handler.handle(update);
+        });
+    }
 
+    private ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName className, IBinder ibinder) {
             binder = (Service.Binder)ibinder;
-            service = binder.bind(Chat.this);
-            service.addHandler(handlerWrapper);
+            binder.bind(Chat.this);
             if(PreferenceManager.getDefaultSharedPreferences(Chat.this).getBoolean("autoconnect", false))
-                service.connect();
-            for(String name : service.client.channels){
-                ensureChannel(name);
-            }
-            Log.d("ocelot.chat", "Connected to service.");
+                binder.getService().connect();
+            binder.getService().replayUpdates(lastSeen, Chat.this);
+            Log.d("ocelot.chat", "Connected to "+binder.getService());
         }
 
         @Override
         public void onServiceDisconnected(ComponentName arg0) {
-            service.removeHandler(handlerWrapper);
-            service = binder.unbind();
             binder = null;
-            Log.d("ocelot.chat", "Disconnected from service.");
+            Log.w("ocelot.chat", "Disconnected from service.");
         }
     };
 
@@ -358,7 +376,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
 
     @Override
     public Map<String, Payload> getEmotes() {
-        return service.client.emotes;
+        return (binder == null)? null : binder.getClient().emotes;
     }
 
     @Override
