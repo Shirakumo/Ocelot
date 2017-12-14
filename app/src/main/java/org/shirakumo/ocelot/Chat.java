@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.FragmentTransaction;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.Resources;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.content.Intent;
@@ -87,13 +88,15 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
             service.disconnect();
         });
 
-        PreferenceManager.setDefaultValues(this, R.xml.settings_connection, false);
-        PreferenceManager.setDefaultValues(this, R.xml.settings_notification, false);
-        PreferenceManager.setDefaultValues(this, R.xml.settings_looks, false);
+        final SharedPreferences hasDefaults = getSharedPreferences(PreferenceManager.KEY_HAS_SET_DEFAULT_VALUES, Context.MODE_PRIVATE);
+        if(!hasDefaults.getBoolean(PreferenceManager.KEY_HAS_SET_DEFAULT_VALUES, false)) {
+            PreferenceManager.setDefaultValues(this, R.xml.settings_connection, false);
+            PreferenceManager.setDefaultValues(this, R.xml.settings_notification, true);
+            PreferenceManager.setDefaultValues(this, R.xml.settings_looks, true);
+        }
+
         generateStyleSheet();
         showChannel(ensureChannel(SYSTEM_CHANNEL));
-
-        // FIXME: handle existing channels in client and show requested channel from launch intent.
     }
 
     @Override
@@ -210,20 +213,21 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
 
     public void generateStyleSheet(){
         SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(this);
+        Resources res = getResources();
         String style = "html{"
-                +"background:"+ Toolkit.getColorHex(pref, "color_background", "#FFF")+";"
-                +"color:"+Toolkit.getColorHex(pref, "color_foreground", "#000")+";"
+                +"background:"+ Toolkit.getColorHex(pref, res, "color_background", android.R.attr.colorBackground)+";"
+                +"color:"+Toolkit.getColorHex(pref, res, "color_foreground", android.R.attr.colorForeground)+";"
                 +"font-size:"+pref.getInt("fontsize", 12)+"pt;"
                 +"}"
                 +"mark{"
-                +"background:"+Toolkit.getColorHex(pref, "color_mention", "#FF0")+";"
+                +"background:"+Toolkit.getColorHex(pref, res, "color_mention", android.R.attr.colorActivatedHighlight)+";"
                 +"}"
                 +"#channel .update .from{"
                 +"min-width:"+(7*pref.getInt("fontsize", 12))+"pt;"
                 +"max-width:"+(7*pref.getInt("fontsize", 12))+"pt;"
                 +"}"
                 +"#channel .update.self .from{"
-                +"color:"+Toolkit.getColorHex(pref, "color_self", "#000")+";"
+                +"color:"+Toolkit.getColorHex(pref, res, "color_self", android.R.attr.colorForeground)+";"
                 +"}";
         File file = new File(getFilesDir(), "style.css");
         try {
@@ -332,6 +336,9 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
             service.addHandler(handlerWrapper);
             if(PreferenceManager.getDefaultSharedPreferences(Chat.this).getBoolean("autoconnect", false))
                 service.connect();
+            for(String name : service.client.channels){
+                ensureChannel(name);
+            }
             Log.d("ocelot.chat", "Connected to service.");
         }
 

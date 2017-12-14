@@ -3,6 +3,7 @@ package org.shirakumo.ocelot;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.Resources;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.OpenableColumns;
@@ -198,9 +199,11 @@ public class Toolkit {
         }
     }
 
-    public static String getColorHex(SharedPreferences prefs, String key, String def){
+    public static String getColorHex(SharedPreferences prefs, Resources res, String key, int defAttr){
         int c = prefs.getInt(key, -1);
-        if(c == -1) return def;
+        if(c == -1){
+            return String.format("#%06X", res.getColor(defAttr));
+        }
         return String.format("#%06X", (0xFFFFFF & c));
     }
 

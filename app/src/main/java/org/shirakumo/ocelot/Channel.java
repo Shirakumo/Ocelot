@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.app.FragmentTransaction;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.view.KeyEvent;
@@ -17,6 +18,13 @@ import org.shirakumo.lichat.CL;
 import org.shirakumo.lichat.Payload;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 
 public class Channel extends Fragment{
@@ -27,6 +35,7 @@ public class Channel extends Fragment{
     private View view;
     private ChannelListener listener;
     private int outputId = idCounter++;
+    private List<Runnable> scheduledFuncs = new ArrayList<>();
 
     public Channel() {
         // Required empty public constructor
@@ -122,14 +131,15 @@ public class Channel extends Fragment{
         return replaceEmotes(markSelf(linkifyURLs(escapeHTML(text))));
     }
 
-    public void showText(String text){
-        showText(CL.getUniversalTime(), "System", text);
-    }
-
     public void runScript(String text){
         if(view != null){
             Log.d("ocelot.channel", "Running: "+text);
             ((WebView) view.findViewById(outputId)).loadUrl("javascript:(function(){"+text+"})()");
+        }else{
+            // Will be run when the webview is done loading.
+            scheduledFuncs.add(()->{
+                runScript(text);
+            });
         }
     }
 
@@ -139,6 +149,10 @@ public class Channel extends Fragment{
                 +"clock:"+Toolkit.prin1(clock)+","
                 +"from:"+Toolkit.prin1(from)+","
                 +"text:"+Toolkit.prin1(html)+"});");
+    }
+
+    public void showText(String text){
+        showText(CL.getUniversalTime(), "System", text);
     }
 
     public void showText(long clock, String from, String text){
@@ -226,6 +240,15 @@ public class Channel extends Fragment{
         web.setId(outputId);
         web.getSettings().setJavaScriptEnabled(true);
         web.getSettings().setAllowFileAccess(true);
+        web.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView vw, String url) {
+                super.onPageFinished(vw, url);
+                view = v;
+                for(Runnable func : scheduledFuncs){func.run();}
+                scheduledFuncs.clear();
+            }
+        });
         web.loadDataWithBaseURL("file:///android_asset/", content, "text/html", "UTF-8", null);
 
         EditText input = (EditText) v.findViewById(R.id.input);
@@ -249,7 +272,6 @@ public class Channel extends Fragment{
             EmoteList.newInstance().show(ft, "emotes");
         });
 
-        view = v;
         return v;
     }
 

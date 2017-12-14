@@ -10,26 +10,25 @@
             android:key="fontsize"
             android:title="@string/setting_look_fontsize"
             android:summary="@string/setting_look_fontsize_summary" />
-
         <com.rarepebble.colorpicker.ColorPreference
-            android:defaultValue="#000"
-            android:key="color_self"
-            android:title="@string/setting_look_self"
-            android:summary="@string/setting_look_self_summary" />
-        <com.rarepebble.colorpicker.ColorPreference
-            android:defaultValue="#F5F5F5"
+            android:defaultValue="?android:attr/colorBackground"
             android:key="color_background"
-            android:title="@string/setting_look_background"
-            android:summary="@string/setting_look_background_summary" />
+            android:summary="@string/setting_look_background_summary"
+            android:title="@string/setting_look_background" />
         <com.rarepebble.colorpicker.ColorPreference
-            android:defaultValue="#111"
+            android:defaultValue="?android:attr/colorForeground"
             android:key="color_foreground"
-            android:title="@string/setting_look_foreground"
-            android:summary="@string/setting_look_foreground_summary" />
+            android:summary="@string/setting_look_foreground_summary"
+            android:title="@string/setting_look_foreground" />
         <com.rarepebble.colorpicker.ColorPreference
-            android:defaultValue="#FF0"
+            android:defaultValue="?android:attr/colorForeground"
+            android:key="color_self"
+            android:summary="@string/setting_look_self_summary"
+            android:title="@string/setting_look_self" />
+        <com.rarepebble.colorpicker.ColorPreference
+            android:defaultValue="?android:attr/colorActivatedHighlight"
             android:key="color_mention"
-            android:title="@string/setting_look_mention"
-            android:summary="@string/setting_look_mention_summary" />
+            android:summary="@string/setting_look_mention_summary"
+            android:title="@string/setting_look_mention" />
     </PreferenceCategory>
 </PreferenceScreen>

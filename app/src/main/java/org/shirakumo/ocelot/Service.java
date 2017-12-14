@@ -259,7 +259,7 @@ public class Service extends android.app.Service {
             CL.sleep(timeout);
             if(0 < reconnectCounter) {
                 Log.i("ocelot.service", "Attempting reconnect...");
-                client.connect();
+                try{client.connect();}catch(Exception ex){}
             }
         }
     }
