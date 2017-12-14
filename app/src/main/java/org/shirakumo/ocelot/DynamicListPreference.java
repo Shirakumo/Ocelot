@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -53,7 +54,7 @@ public class DynamicListPreference extends DialogPreference {
     @Override
     protected void onBindDialogView(View view) {
         super.onBindDialogView(view);
-        Button add_entry = view.findViewById(R.id.add_entry);
+        ImageButton add_entry = view.findViewById(R.id.add_entry);
         EditText entry_name = view.findViewById(R.id.new_entry);
         LinearLayout entries = view.findViewById(R.id.entries);
 
