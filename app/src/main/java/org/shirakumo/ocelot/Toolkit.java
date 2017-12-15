@@ -15,27 +15,45 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Toolkit {
-    public static String join(String[] strings, String delim, int from, int to){
-        if(strings.length < to) return "";
+    public static String join(Iterable strings, String delim, int from, int to){
         StringBuilder build = new StringBuilder();
-        for(int i=from; i<to-1; i++){
-            build.append(strings[i]);
-            build.append(delim);
+        Iterator e = strings.iterator();
+        for(int i=0; i<from; i++){
+            if(!e.hasNext()) return "";
+            e.next();
         }
-        build.append(strings[to-1]);
+        for(int i=from; i<to; i++){
+            build.append(e.next());
+            if(e.hasNext()) build.append(delim);
+            else break;
+        }
         return build.toString();
     }
 
-    public static String join(String[] strings, String delim, int from){
-        return join(strings, delim, from, strings.length);
+    public static String join(Iterable strings, String delim, int from){
+        return join(strings, delim, from, Integer.MAX_VALUE);
     }
 
-    public static String join(String[] strings, String delim){
-        return join(strings, delim, 0, strings.length);
+    public static String join(Iterable strings, String delim){
+        return join(strings, delim, 0, Integer.MAX_VALUE);
+    }
+
+    public static String join(Object[] strings, String delim, int from, int to){
+        return join(Arrays.asList(strings), delim, from, to);
+    }
+
+    public static String join(Object[] strings, String delim, int from){
+        return join(Arrays.asList(strings), delim, from, Integer.MAX_VALUE);
+    }
+
+    public static String join(Object[] strings, String delim){
+        return join(Arrays.asList(strings), delim, 0, Integer.MAX_VALUE);
     }
 
     public static String replaceAll(String input, Pattern regex, ReplaceOp replacer){
@@ -200,7 +218,7 @@ public class Toolkit {
         }
     }
 
-    public static String getColorHex(SharedPreferences prefs, Resources.Theme theme, String key, int defAttr){
+    public static int getColor(SharedPreferences prefs, Resources.Theme theme, String key, int defAttr){
         int c = prefs.getInt(key, -1);
         if(c == -1){
             TypedValue tv = new TypedValue();
@@ -211,7 +229,11 @@ public class Toolkit {
                 c = 0;
             }
         }
-        return String.format("#%06X", (0xFFFFFF & c));
+        return c;
+    }
+
+    public static String getColorHex(SharedPreferences prefs, Resources.Theme theme, String key, int defAttr){
+        return String.format("#%06X", (0xFFFFFF & getColor(prefs, theme, key, defAttr)));
     }
 
     public static boolean mentionsUser(String text, String user){

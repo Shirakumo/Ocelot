@@ -67,7 +67,7 @@ public class EmoteList extends DialogFragment {
             // FIXME: cache views
             PayloadView emote = new PayloadView(view.getContext(), emotes.get(name));
             emote.setOnClickListener((v)->{
-                listener.emoteChosen(name);
+                listener.onEmoteChosen(name);
                 dismiss();
             });
             images.add(emote);
@@ -93,7 +93,7 @@ public class EmoteList extends DialogFragment {
     }
 
     public interface EmoteListListener{
-        public void emoteChosen(String emote);
+        public void onEmoteChosen(String emote);
         public Map<String,Payload> getEmotes();
     }
 

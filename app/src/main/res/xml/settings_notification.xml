@@ -25,5 +25,23 @@
             android:ringtoneType="notification"
             android:title="@string/setting_notify_sound"
             android:summary="@string/setting_notify_sound_summary" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:dependency="notifications"
+            android:key="notify_vibrate"
+            android:summary="@string/setting_notify_vibrate_summary"
+            android:title="@string/setting_notify_vibrate" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:dependency="notifications"
+            android:key="notify_light"
+            android:summary="@string/setting_notify_light_summary"
+            android:title="@string/setting_notify_light" />
+        <com.rarepebble.colorpicker.ColorPreference
+            android:defaultValue="?android:attr/colorActivatedHighlight"
+            android:dependency="notify_light"
+            android:key="notify_light_color"
+            android:summary="@string/setting_notify_light_color_summary"
+            android:title="@string/setting_notify_light_color" />
     </PreferenceCategory>
 </PreferenceScreen>

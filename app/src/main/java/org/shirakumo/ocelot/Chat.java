@@ -6,22 +6,31 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.graphics.Color;
+import android.graphics.Point;
+import android.net.Uri;
 import android.os.Bundle;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.ComponentName;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
+import android.support.v4.content.FileProvider;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
+import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.shirakumo.lichat.CL;
@@ -31,8 +40,9 @@ import org.shirakumo.lichat.updates.Leave;
 import org.shirakumo.lichat.updates.NoSuchChannel;
 import org.shirakumo.lichat.updates.Update;
 
-public class Chat extends Activity implements Channel.ChannelListener, EmoteList.EmoteListListener,  SharedPreferences.OnSharedPreferenceChangeListener, Handler{
+public class Chat extends Activity implements Channel.ChannelListener, EmoteList.EmoteListListener, Handler{
     public static final String SYSTEM_CHANNEL = "@System";
+    private static final int SETTINGS_REQUEST = 1;
 
     private Intent serviceIntent;
     private UpdateHandler handler;
@@ -41,6 +51,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     private Channel channel;
     private long lastSeen = 0;
     private Service.Binder binder;
+    private List<Runnable> onBindRunnables = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState){
@@ -51,9 +62,30 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         channels = new HashMap<>();
         commands = new HashMap<>();
 
+        ((TextView)findViewById(R.id.input)).setOnEditorActionListener((TextView v, int actionId, KeyEvent event)->{
+            if (actionId == EditorInfo.IME_ACTION_SEND ||
+                    (event != null && !event.isShiftPressed() && event.getKeyCode() == KeyEvent.KEYCODE_ENTER)){
+                onInput(v.getText().toString());
+                v.setText("");
+                return true;
+            }
+            return false;
+        });
+
+        findViewById(R.id.send_file).setOnClickListener((vw)->{
+            requestSendFile(channel);
+        });
+
+        findViewById(R.id.select_emote).setOnClickListener((vw)->{
+            FragmentTransaction ft = getFragmentManager().beginTransaction();
+            EmoteList.newInstance().show(ft, "emotes");
+        });
+
         addCommand("join", (Channel c, String[] args)->{
+            String name = Toolkit.join(args, " ", 1);
             binder.getClient().s("JOIN",
-                    "channel", Toolkit.join(args, " ", 1));
+                    "channel", name);
+            showChannel(ensureChannel(name));
         });
 
         addCommand("leave", (Channel c, String[] args)->{
@@ -73,16 +105,13 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
                     "channel", (args.length == 1)? null : Toolkit.join(args, " ", 1));
         });
 
-        addCommand("help", (Channel c, String[] args)->{
-            String[] commandNames = new String[commands.keySet().size()];
-            commandNames = (String[])commands.keySet().toArray(commandNames);
-            Arrays.sort(commandNames);
-            c.showHTML("Available commands:<br>"+Toolkit.join(commandNames, "<br>"));
+        addCommand("channels", (Channel c, String[] args)->{
+            binder.getClient().s("CHANNELS");
         });
 
-        addCommand("settings", (Channel c, String[] args)->{
-            Intent i = new Intent(this, Settings.class);
-            startActivity(i);
+        addCommand("users", (Channel c, String[] args)->{
+            binder.getClient().s("USERS",
+                    "channel", c.getName());
         });
 
         addCommand("connect", (Channel c, String[] args)->{
@@ -93,37 +122,37 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
             binder.getService().disconnect();
         });
 
+        addCommand("help", (Channel c, String[] args)->{
+            String[] commandNames = new String[commands.keySet().size()];
+            commandNames = (String[])commands.keySet().toArray(commandNames);
+            Arrays.sort(commandNames);
+            c.showHTML("Available commands:<br>"+Toolkit.join(commandNames, "<br>"));
+        });
+
+        addCommand("settings", (Channel c, String[] args)->{
+            Intent i = new Intent(this, Settings.class);
+            startActivityForResult(i, SETTINGS_REQUEST);
+        });
+
+        addCommand("clear", (Channel c, String[] args)->{
+            c.clear();
+            binder.getService().clearChannelUpdates(c.getName());
+        });
+
         final SharedPreferences hasDefaults = getSharedPreferences(PreferenceManager.KEY_HAS_SET_DEFAULT_VALUES, Context.MODE_PRIVATE);
         if(!hasDefaults.getBoolean(PreferenceManager.KEY_HAS_SET_DEFAULT_VALUES, false)) {
             PreferenceManager.setDefaultValues(this, R.xml.settings_connection, true);
             PreferenceManager.setDefaultValues(this, R.xml.settings_notification, true);
             PreferenceManager.setDefaultValues(this, R.xml.settings_looks, true);
+            generateStyleSheet();
         }
 
-        generateStyleSheet();
-        showChannel(ensureChannel(SYSTEM_CHANNEL));
-        commands.get("help").execute(getChannel(), null);
+        commands.get("help").execute(ensureChannel(SYSTEM_CHANNEL), null);
         String channelToShow = getIntent().getStringExtra("channel");
-        if(channelToShow != null) showChannel(ensureChannel(channelToShow));
-    }
-
-    @Override
-    public void onInput(Channel c, String input){
-        if(binder == null) return;
-        if(input.isEmpty()) return;
-
-        if(input.startsWith("/")){
-            String[] args = input.substring(1).split(" +");
-            Command command = commands.get(args[0].toLowerCase());
-            if(command != null){
-                command.execute(c, args);
-            }else{
-                c.showText("No such command "+args[0]);
-            }
+        if(channelToShow != null){
+            showChannel(ensureChannel(channelToShow));
         }else{
-            binder.getClient().s("MESSAGE",
-                    "channel", c.getName(),
-                    "text", input);
+            showChannel(SYSTEM_CHANNEL);
         }
     }
 
@@ -134,6 +163,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         ToggleButton tab = (ToggleButton)getLayoutInflater().inflate(R.layout.channel_button, null);
         tab.setTextOff(channel.getName());
         tab.setTextOn(channel.getName());
+        tab.setText(channel.getName());
         tab.setTag(channel);
         tab.setOnClickListener((View v)->showChannel(channel));
         ((LinearLayout)findViewById(R.id.tabs)).addView(tab);
@@ -144,9 +174,14 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         if(!channels.containsKey(name)){
             // Create channel fragment
             Channel channel = Channel.newInstance(name);
-            FragmentTransaction ft = getFragmentManager().beginTransaction();
-            ft.add(R.id.channel, channel);
-            ft.commit();
+            getFragmentManager().beginTransaction()
+                    .add(R.id.channel, channel)
+                    .addToBackStack(null)
+                    .commit();
+            getFragmentManager().beginTransaction()
+                    .hide(channel)
+                    .addToBackStack(null)
+                    .commit();
             getFragmentManager().executePendingTransactions();
             Log.d("ocelot.chat", "Created channel "+name);
         }
@@ -154,7 +189,11 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     }
 
     public void removeChannel(Channel channel){
-        ((ViewGroup)channel.getView().getParent()).removeView(channel.getView());
+        channels.remove(channel.getName());
+        getFragmentManager().beginTransaction()
+                .remove(channel)
+                .addToBackStack(null)
+                .commit();
         LinearLayout tabs = (LinearLayout)findViewById(R.id.tabs);
         tabs.removeView(tabs.findViewWithTag(channel));
         Log.d("ocelot.chat", "Removed channel "+channel.getName());
@@ -173,12 +212,17 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     }
 
     public Channel showChannel(Channel toShow){
+        FragmentTransaction ft = getFragmentManager().beginTransaction();
         LinearLayout tabs = (LinearLayout)findViewById(R.id.tabs);
         for(Channel c : channels.values()){
-            c.hide();
-            ((ToggleButton)tabs.findViewWithTag(c)).setChecked(false);
+            if(c != toShow){
+                ft.hide(c);
+                ((ToggleButton)tabs.findViewWithTag(c)).setChecked(false);
+            }
         }
-        toShow.show();
+        ft.show(toShow);
+        ft.addToBackStack(null);
+        ft.commit();
         ((ToggleButton)tabs.findViewWithTag(toShow)).setChecked(true);
         channel = toShow;
         return channel;
@@ -210,32 +254,40 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         return binder.getService().getEmotePath(name);
     }
 
-    public File getTempFile(String name, String type){
-        try {
-            return File.createTempFile(name, "." + type, getCacheDir());
-        } catch(Exception ex){
-            Log.e("ocelot.chat", "Failed to create temporary file.", ex);
-            return null;
+    public void showUrl(Uri url){
+        if(url.getScheme().equals("file")) {
+            url = FileProvider.getUriForFile(this, BuildConfig.APPLICATION_ID+".provider", new File(url.getPath()));
         }
+        Intent intent = new Intent(Intent.ACTION_VIEW, url);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivity(intent);
     }
 
     public void generateStyleSheet(){
-        SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(this);
+        SharedPreferences pref = getPreferences();
         Resources.Theme res = getTheme();
+        Point size = new Point();
+        getWindowManager().getDefaultDisplay().getSize(size);
         String style = "html{"
                 +"background:"+ Toolkit.getColorHex(pref, res, "color_background", android.R.attr.colorBackground)+";"
                 +"color:"+Toolkit.getColorHex(pref, res, "color_foreground", android.R.attr.colorForeground)+";"
-                +"font-size:"+pref.getInt("fontsize", 12)+"pt;"
+                +"font-size:"+pref.getInt("fontsize", 11)+"pt;"
                 +"}"
                 +"mark{"
                 +"background:"+Toolkit.getColorHex(pref, res, "color_mention", android.R.attr.colorActivatedHighlight)+";"
                 +"}"
                 +"#channel .update .from{"
-                +"min-width:"+(7*pref.getInt("fontsize", 12))+"pt;"
-                +"max-width:"+(7*pref.getInt("fontsize", 12))+"pt;"
+                +"min-width:"+(6*pref.getInt("fontsize", 11))+"pt;"
+                +"max-width:"+(6*pref.getInt("fontsize", 11))+"pt;"
                 +"}"
                 +"#channel .update.self .from{"
                 +"color:"+Toolkit.getColorHex(pref, res, "color_self", android.R.attr.colorForeground)+";"
+                +"}"
+                +"#channel .update .text a{"
+                +"color:"+Toolkit.getColorHex(pref, res, "color_link", android.R.attr.colorActivatedHighlight)+";"
+                +"}"
+                +"#channel .update .text .payload{"
+                +"max-height:"+(size.y*1/3)+"px"
                 +"}";
         File file = new File(getFilesDir(), "style.css");
         try {
@@ -263,8 +315,14 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
             unbindService(serviceConnection);
             lastSeen = CL.getUniversalTime();
             binder.unbind();
+            for(Channel c : channels.values()) c.clear();
             binder = null;
         }
+    }
+
+    @Override
+    public Map<String, Payload> getEmotes() {
+        return (binder == null)? null : binder.getClient().emotes;
     }
 
     private Map<Integer, Channel> sendFileRequestMap = new HashMap<>();
@@ -278,12 +336,21 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        Channel channel = sendFileRequestMap.get(requestCode);
-        if (channel != null) {
-            sendFileRequestMap.remove(requestCode);
-            if (resultCode == RESULT_OK) {
-                Log.d("ocelot.chat", "Selected file "+data.getData());
-                binder.getService().sendFile(channel.getName(), data.getData());
+        super.onActivityResult(requestCode, resultCode, data);
+        Log.d("ocelot.chat", "Activity result "+requestCode);
+        if(requestCode == SETTINGS_REQUEST){
+            updateStyleSheet();
+        }else {
+            Channel channel = sendFileRequestMap.get(requestCode);
+            if (channel != null) {
+                sendFileRequestMap.remove(requestCode);
+                if (resultCode == RESULT_OK) {
+                    Log.d("ocelot.chat", "Selected file " + data.getData());
+                    if(binder != null)
+                        binder.getService().sendFile(channel.getName(), data.getData());
+                    else
+                        onBindRunnables.add(()->binder.getService().sendFile(channel.getName(), data.getData()));
+                }
             }
         }
     }
@@ -293,8 +360,6 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         Log.d("ocelot.chat", "Starting");
         super.onStart();
         if(binder == null) startService(serviceIntent);
-        PreferenceManager.getDefaultSharedPreferences(this)
-                .registerOnSharedPreferenceChangeListener(this);
         bind();
     }
 
@@ -316,8 +381,6 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     protected void onStop() {
         Log.d("ocelot.chat", "Stopping");
         super.onStop();
-        PreferenceManager.getDefaultSharedPreferences(this)
-                .unregisterOnSharedPreferenceChangeListener(this);
         unbind();
     }
 
@@ -330,12 +393,13 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     private boolean backPressed = false;
     @Override
     public void onBackPressed() {
-        if(backPressed) {
+        if(backPressed || (binder != null && !binder.getService().client.isConnected())) {
             if(binder != null) {
                 binder.getService().disconnect();
-                stopService(serviceIntent);
+                unbind();
             }
-            super.onBackPressed();
+            stopService(serviceIntent);
+            finish();
         }else{
             backPressed = true;
             Toast.makeText(this, "Press BACK again to disconnect.", Toast.LENGTH_SHORT).show();
@@ -345,10 +409,37 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         }
     }
 
+    @Override
+    public void onEmoteChosen(String emote) {
+        channel.setInput(channel.getInput()+":"+emote+":");
+    }
+
+    public void onInput(String input){
+        if(input.isEmpty()) return;
+
+        if(input.startsWith("/")){
+            String[] args = input.substring(1).split(" +");
+            Command command = commands.get(args[0].toLowerCase());
+            if(command != null){
+                command.execute(channel, args);
+            }else{
+                channel.showText("No such command "+args[0]);
+            }
+        }else{
+            binder.getClient().s("MESSAGE",
+                    "channel", channel.getName(),
+                    "text", input);
+        }
+    }
+
     public void handle(Update update){
         runOnUiThread(()->{
             handler.handle(update);
         });
+    }
+
+    public SharedPreferences getPreferences(){
+        return PreferenceManager.getDefaultSharedPreferences(this);
     }
 
     private ServiceConnection serviceConnection = new ServiceConnection() {
@@ -356,9 +447,11 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         public void onServiceConnected(ComponentName className, IBinder ibinder) {
             binder = (Service.Binder)ibinder;
             binder.bind(Chat.this);
-            if(PreferenceManager.getDefaultSharedPreferences(Chat.this).getBoolean("autoconnect", false))
+            if(getPreferences().getBoolean("autoconnect", false))
                 binder.getService().connect();
             binder.getService().replayUpdates(lastSeen, Chat.this);
+            for(Runnable r : onBindRunnables) r.run();
+            onBindRunnables.clear();
             Log.d("ocelot.chat", "Connected to "+binder.getService());
         }
 
@@ -368,22 +461,4 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
             Log.w("ocelot.chat", "Disconnected from service.");
         }
     };
-
-    @Override
-    public void emoteChosen(String emote) {
-        channel.setInput(channel.getInput()+":"+emote+":");
-    }
-
-    @Override
-    public Map<String, Payload> getEmotes() {
-        return (binder == null)? null : binder.getClient().emotes;
-    }
-
-    @Override
-    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-        updateStyleSheet();
-        if (key.equals("fontsize") || key.startsWith("color_")) {
-            updateStyleSheet();
-        }
-    }
 }

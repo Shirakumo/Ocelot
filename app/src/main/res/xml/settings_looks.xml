@@ -6,7 +6,7 @@
         <SeekBarPreference
             android:min="8"
             android:max="36"
-            android:defaultValue="12"
+            android:defaultValue="11"
             android:key="fontsize"
             android:title="@string/setting_look_fontsize"
             android:summary="@string/setting_look_fontsize_summary" />
@@ -27,8 +27,23 @@
             android:title="@string/setting_look_self" />
         <com.rarepebble.colorpicker.ColorPreference
             android:defaultValue="?android:attr/colorActivatedHighlight"
+            android:key="color_link"
+            android:summary="@string/setting_look_link_summary"
+            android:title="@string/setting_look_link" />
+        <com.rarepebble.colorpicker.ColorPreference
+            android:defaultValue="?android:attr/colorActivatedHighlight"
             android:key="color_mention"
             android:summary="@string/setting_look_mention_summary"
             android:title="@string/setting_look_mention" />
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="show_emotes"
+            android:summary="@string/setting_look_emotes_summary"
+            android:title="@string/setting_look_emotes" />
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="show_data"
+            android:summary="@string/setting_look_data_summary"
+            android:title="@string/setting_look_data" />
     </PreferenceCategory>
 </PreferenceScreen>

@@ -30,7 +30,17 @@ public class UpdateHandler extends HandlerAdapter {
     }
 
     public void handle(Data update){
-        chat.getChannel(update.channel).showPayload(update.clock, update.from, new Payload(update));
+        chat.getChannel(update.channel).showData(update.clock, update.from, update);
+    }
+
+    public void handle(Channels update){
+        chat.getChannel(Chat.SYSTEM_CHANNEL).showText(update.clock, update.from, "Channels: "+
+                Toolkit.join(update.channels, ", "));
+    }
+
+    public void handle(Users update){
+        chat.getChannel(update.from).showText(update.clock, update.from, "Users: "+
+                Toolkit.join(update.users, ", "));
     }
 
     public void handle(Connect update){

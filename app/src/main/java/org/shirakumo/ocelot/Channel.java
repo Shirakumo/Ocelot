@@ -1,13 +1,18 @@
 package org.shirakumo.ocelot;
 
 import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
 import android.app.Fragment;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.app.FragmentTransaction;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.EditText;
@@ -16,6 +21,7 @@ import android.view.KeyEvent;
 import android.view.inputmethod.EditorInfo;
 import org.shirakumo.lichat.CL;
 import org.shirakumo.lichat.Payload;
+import org.shirakumo.lichat.updates.Data;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -42,6 +48,8 @@ public class Channel extends Fragment{
     }
 
     public String replaceEmotes(String text){
+        if(!listener.getPreferences().getBoolean("show_emotes", true)) return text;
+
         StringBuilder builder = new StringBuilder();
         int start = 0;
         while(start<text.length() && text.charAt(start) != ':') start++;
@@ -144,6 +152,10 @@ public class Channel extends Fragment{
     }
 
     public void showHTML(long clock, String from, String html){
+        // FIXME: maybe we should have usernames as a "header" and concatenate bodies
+        //        together if they are consecutively from the same person. Would at least
+        //        make the output a lot more bearable.
+        // FIXME: Update channel button to indicate more messages.
         runScript("showText({"
                 +"source:"+Toolkit.prin1(from.equals(listener.getUsername())?"self":"other")+","
                 +"clock:"+Toolkit.prin1(clock)+","
@@ -161,26 +173,23 @@ public class Channel extends Fragment{
         showHTML(clock, from, renderText(text));
     }
 
-    public void showPayload(long clock, String from, Payload payload){
-        File temp = listener.getTempFile(payload.name, Toolkit.fileExtensionForMime(payload.contentType));
-        if(temp != null){
-            try{
-                payload.save(temp);
-                String path = Toolkit.prin1("file://"+escapeHTML(temp.getAbsolutePath()));
-                if(Toolkit.isImageMime(payload.contentType)) {
-                    showHTML(clock, from, "<img class=\"payload\" src="+path+">");
-                }else if(Toolkit.isAudioMime(payload.contentType)){
-                    showHTML(clock, from, "<audio class=\"payload\" controls src="+path+"><a href="+path+">"+escapeHTML(payload.name)+"</a></audio>");
-                }else if(Toolkit.isVideoMime(payload.contentType)) {
-                    showHTML(clock, from, "<video class=\"payload\" controls src="+path+"><a href="+path+">"+escapeHTML(payload.name)+"</a></video>");
-                }else{
-                    Log.w("ocelot.channel", "Cannot show payload of unknown content type "+payload.contentType);
-                    temp.delete();
-                }
-            }catch(Exception ex){
-                Log.e("ocelot.channel", "Failed to save payload to "+temp, ex);
-            }
+    public void showData(long clock, String from, Data payload){
+        String path = Toolkit.prin1(escapeHTML("file://"+escapeHTML(payload.payload)));
+        if(!listener.getPreferences().getBoolean("show_data", true)) {
+            showHTML(clock, from, "File: <a class=\"payload\" href="+path+">"+payload.filename+"</a>");
+        }else if(Toolkit.isImageMime(payload.contentType)) {
+            showHTML(clock, from, "<img class=\"payload\" src="+path+">");
+        }else if(Toolkit.isAudioMime(payload.contentType)){
+            showHTML(clock, from, "<audio class=\"payload\" controls src="+path+"><a href="+path+">"+escapeHTML(payload.filename)+"</a></audio>");
+        }else if(Toolkit.isVideoMime(payload.contentType)) {
+            showHTML(clock, from, "<video class=\"payload\" controls src="+path+"><a href="+path+">"+escapeHTML(payload.filename)+"</a></video>");
+        }else{
+            Log.w("ocelot.channel", "Cannot show payload of unknown content type "+payload.contentType);
         }
+    }
+
+    public void clear(){
+        runScript("clear();");
     }
 
     public String getInput(){
@@ -202,17 +211,6 @@ public class Channel extends Fragment{
 
     public String getName(){
         return name;
-    }
-
-    public void hide(){
-        if(view == null) return;
-        view.setVisibility(View.GONE);
-    }
-
-    public void show(){
-        if(view == null) return;
-        view.setVisibility(View.VISIBLE);
-        view.findViewById(R.id.input).requestFocus();
     }
 
     public static Channel newInstance(String name) {
@@ -245,6 +243,18 @@ public class Channel extends Fragment{
         web.getSettings().setAllowFileAccess(true);
         web.setWebViewClient(new WebViewClient() {
             @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                listener.showUrl(request.getUrl());
+                return true;
+            }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                listener.showUrl(Uri.parse(url));
+                return true;
+            }
+
+            @Override
             public void onPageFinished(WebView vw, String url) {
                 super.onPageFinished(vw, url);
                 view = v;
@@ -254,28 +264,6 @@ public class Channel extends Fragment{
         });
         web.loadDataWithBaseURL("file:///android_asset/", content, "text/html", "UTF-8", null);
 
-        EditText input = (EditText) v.findViewById(R.id.input);
-        input.setOnEditorActionListener((TextView vw, int actionId, KeyEvent event)->{
-            if (actionId == EditorInfo.IME_ACTION_SEND ||
-                    (event != null && !event.isShiftPressed() && event.getKeyCode() == KeyEvent.KEYCODE_ENTER)){
-                if(listener != null)
-                    listener.onInput(this, vw.getText().toString());
-                vw.setText("");
-                return true;
-            }
-            return false;
-        });
-
-        v.findViewById(R.id.send_file).setOnClickListener((vw)->{
-            listener.requestSendFile(this);
-        });
-
-        v.findViewById(R.id.select_emote).setOnClickListener((vw)->{
-            FragmentTransaction ft = getFragmentManager().beginTransaction();
-            EmoteList.newInstance().show(ft, "emotes");
-        });
-
-        v.setVisibility(View.GONE);
         return v;
     }
 
@@ -301,11 +289,10 @@ public class Channel extends Fragment{
     }
 
     public interface ChannelListener{
-        public void onInput(Channel c, String input);
+        public void showUrl(Uri url);
+        public SharedPreferences getPreferences();
         public void registerChannel(Channel c);
-        public void requestSendFile(Channel c);
         public String getUsername();
         public File getEmotePath(String name);
-        public File getTempFile(String name, String type);
     }
 }

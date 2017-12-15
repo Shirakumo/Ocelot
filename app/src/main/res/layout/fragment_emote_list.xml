@@ -5,8 +5,6 @@
     android:layout_height="match_parent"
     tools:context="org.shirakumo.ocelot.EmoteList">
 
-    <!-- TODO: Update blank fragment layout -->
-
     <GridView
         android:id="@+id/emotes"
         android:layout_width="match_parent"

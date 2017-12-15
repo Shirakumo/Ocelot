@@ -1,3 +1,8 @@
+var channel;
+document.addEventListener("DOMContentLoaded", function(event){
+    channel = document.getElementById("channel");
+})
+
 var constructElement = function(tag, options){
     var el = document.createElement(tag);
     el.setAttribute("class", (options.classes||[]).join(" "));
@@ -46,6 +51,12 @@ var reloadCSS = function(){
     }
 };
 
+var clear = function(){
+    while(channel.firstChild){
+        channel.removeChild(channel.firstChild);
+    }
+};
+
 var showText = function(update){
     var element = constructElement("div", {
         classes: ["update", update.source],
@@ -67,7 +78,6 @@ var showText = function(update){
         }
     });
     // Ensure in-order insert.
-    var channel = document.getElementById("channel");
     var children = channel.children;
     for (var i=0; i<children.length; i++) {
         if(update.clock < parseInt(children[i].getAttribute("data-clock"))){

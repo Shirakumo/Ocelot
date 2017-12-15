@@ -1,17 +1,17 @@
 package org.shirakumo.ocelot;
 
 import android.app.NotificationChannel;
+import android.app.NotificationChannelGroup;
 import android.content.ContentResolver;
-import android.content.Context;
 import android.content.Intent;
 import android.app.PendingIntent;
 import android.content.SharedPreferences;
+import android.media.AudioAttributes;
 import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
 import android.app.Notification;
 import android.app.NotificationManager;
-import android.preference.Preference;
 import android.preference.PreferenceManager;
 import android.util.Log;
 
@@ -27,10 +27,13 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 
-public class Service extends android.app.Service {
-    public static final String NOTIFICATION_CHANNEL = "ocelot-service-channel";
+public class Service extends android.app.Service implements SharedPreferences.OnSharedPreferenceChangeListener{
+    public static final String CHANNEL_GROUP = "ocelot-notifications";
+    public static final String UPDATES_CHANNEL = "ocelot-notification-channel";
+    public static final String SERVICE_CHANNEL = "ocelot-service-channel";
     public static final int SERVICE_NOTIFICATION = 1;
     public static final int UPDATE_NOTIFICATION = 2;
     public static final int ACTION_DISMISS_NOTIFICATION = 1;
@@ -64,28 +67,49 @@ public class Service extends android.app.Service {
             }
         }
 
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager manager = ((NotificationManager) getSystemService(NOTIFICATION_SERVICE));
+            NotificationChannelGroup group = new NotificationChannelGroup(CHANNEL_GROUP, getString(R.string.notification_group));
+            manager.createNotificationChannelGroup(group);
+            {
+                NotificationChannel service = new NotificationChannel(SERVICE_CHANNEL, getString(R.string.notification_channel_service), NotificationManager.IMPORTANCE_LOW);
+                service.setGroup(CHANNEL_GROUP);
+                service.setDescription(getString(R.string.notification_channel_service_description));
+                manager.createNotificationChannel(service);
+            }{
+                NotificationChannel updates = new NotificationChannel(UPDATES_CHANNEL, getString(R.string.notification_channel_updates), NotificationManager.IMPORTANCE_DEFAULT);
+                updates.setGroup(CHANNEL_GROUP);
+                updates.setDescription(getString(R.string.notification_channel_updates_description));
+                updates.setShowBadge(true);
+                manager.createNotificationChannel(updates);
+            }
+        }
+
+        getPreferences().registerOnSharedPreferenceChangeListener(this);
+        for(String key : new String[]{"notify_sound","notify_vibrate","notify_light","notify_light_color"})
+            onSharedPreferenceChanged(getPreferences(), key);
+        Log.d("ocelot.service", "Created");
+    }
+
+    public void startForeground() {
         // Create sticky notification
         Intent notificationIntent = new Intent(this, Chat.class);
         notificationIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
 
-        Notification.Builder builder;
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(
-                    new NotificationChannel(NOTIFICATION_CHANNEL, NOTIFICATION_CHANNEL, NotificationManager.IMPORTANCE_LOW));
-            builder = new Notification.Builder(this, NOTIFICATION_CHANNEL);
-        } else {
-            builder = new Notification.Builder(this);
-        }
+        Notification.Builder builder = new Notification.Builder(this);;
 
-        builder.setContentTitle(getText(R.string.notification_title))
-                .setContentText(getText(R.string.notification_message))
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            builder.setChannelId(SERVICE_CHANNEL);
+
+        builder.setContentTitle(getText(R.string.service_title))
+                .setContentText(getText(R.string.service_message))
                 .setSmallIcon(R.drawable.ic_ocelot)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true);
 
         startForeground(SERVICE_NOTIFICATION, builder.build());
-        Log.d("ocelot.service", "Created");
+        Log.d("ocelot.service", "Started foreground");
     }
 
     @Override
@@ -110,7 +134,10 @@ public class Service extends android.app.Service {
 
     @Override
     public void onDestroy(){
+        getPreferences().unregisterOnSharedPreferenceChangeListener(this);
+        try{((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).cancelAll();}catch(Exception ex){}
         disconnect();
+        clearCache();
     }
 
     public void showUpdateNotification(String channel, String from, String content){
@@ -127,7 +154,14 @@ public class Service extends android.app.Service {
 
         Notification.Builder builder = new Notification.Builder(this);
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            builder.setChannelId(NOTIFICATION_CHANNEL);
+            builder.setChannelId(UPDATES_CHANNEL);
+        }else{
+            if(!getPreferences().getString("notify_sound", "").isEmpty())
+                builder.setSound(Uri.parse(getPreferences().getString("notify_sound", "")));
+            if(getPreferences().getBoolean("notify_vibrate", false))
+                builder.setVibrate(new long[]{0, 100});
+            if(getPreferences().getBoolean("notify_light", false))
+                builder.setLights(Toolkit.getColor(getPreferences(), getTheme(), "notify_light_color", android.R.attr.colorActivatedHighlight), 1000, 1000);
         }
 
         builder.setContentTitle(from+" says:")
@@ -141,9 +175,13 @@ public class Service extends android.app.Service {
         ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(UPDATE_NOTIFICATION, builder.build());
     }
 
+    public SharedPreferences getPreferences(){
+        return PreferenceManager.getDefaultSharedPreferences(this);
+    }
+
     public void connect(){
         if(!client.isConnected()) {
-            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+            SharedPreferences prefs = getPreferences();
             client.username = prefs.getString("username", "Ocelot");
             client.password = prefs.getString("password", "");
             if(client.password.isEmpty()) client.password = null;
@@ -175,6 +213,21 @@ public class Service extends android.app.Service {
         return null;
     }
 
+    public File getTempFile(String name, String type){
+        try {
+            return File.createTempFile(name, "." + type, getExternalCacheDir());
+        } catch(Exception ex){
+            Log.e("ocelot.chat", "Failed to create temporary file.", ex);
+            return null;
+        }
+    }
+
+    public void clearCache(){
+        for(File file : getExternalCacheDir().listFiles()){
+            if(file.isFile()) file.delete();
+        }
+    }
+
     public void sendFile(String channel, Uri file){
         Log.d("ocelot.service", "Sending file "+file+"...");
         try {
@@ -193,11 +246,21 @@ public class Service extends android.app.Service {
 
     public void replayUpdates(long since, Handler handler){
         // FIXME: do binary search for earliest matching update.
+        // FIXME: when do we clear this cache?
         if(updates.isEmpty()) return;
         int i = 0;
-        while(updates.get(i).clock < since) i++;
+        while(i < updates.size() && updates.get(i).clock < since) i++;
         for(; i<updates.size(); i++){
             handler.handle(updates.get(i));
+        }
+    }
+
+    public void clearChannelUpdates(String name){
+        for (Iterator<Update> it = updates.iterator(); it.hasNext(); ) {
+            Update u = it.next();
+            if(u instanceof ChannelUpdate && ((ChannelUpdate)u).channel.equals(name)){
+                it.remove();
+            }
         }
     }
 
@@ -209,6 +272,31 @@ public class Service extends android.app.Service {
     @Override
     public boolean onUnbind(Intent intent) {
         return super.onUnbind(intent);
+    }
+
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).getNotificationChannel(UPDATES_CHANNEL);
+            if(key.equals("notify_sound")){
+                String sound = sharedPreferences.getString(key, null);
+                Log.d("ocelot.service", "Updating notification sound to "+sound);
+                if(sound != null){
+                    channel.setSound(Uri.parse(sound),
+                            new AudioAttributes.Builder()
+                                    .setUsage(AudioAttributes.USAGE_NOTIFICATION_COMMUNICATION_INSTANT)
+                                    .build());
+                }else{
+                    channel.setSound(null, null);
+                }
+            }else if(key.equals("notify_vibrate")){
+                channel.enableVibration(sharedPreferences.getBoolean(key, false));
+            }else if(key.equals("notify_light")){
+                channel.enableLights(sharedPreferences.getBoolean(key, false));
+            }else if(key.equals("notify_light_color")){
+                channel.setLightColor(Toolkit.getColor(sharedPreferences, getTheme(), key, android.R.attr.colorActivatedHighlight));
+            }
+        }
     }
 
     class Binder extends android.os.Binder{
@@ -245,6 +333,12 @@ public class Service extends android.app.Service {
             super.handle(update);
         }
 
+        public void handle(Join update){
+            if(!update.channel.equals(client.servername)) {
+                client.s("BACKFILL", "channel", update.channel);
+            }
+        }
+
         public void handle(Emote emote){
             Payload payload = client.emotes.get(emote.name);
             if(payload != null){
@@ -259,8 +353,24 @@ public class Service extends android.app.Service {
             }
         }
 
+        public void handle(Data update){
+            Payload payload = new Payload(update);
+            File temp = getTempFile(payload.name, Toolkit.fileExtensionForMime(payload.contentType));
+            Log.d("ocelot.service", "Saving data "+update+" to "+temp+"...");
+            if(temp != null){
+                try {
+                    payload.save(temp);
+                    update.payload = temp.getAbsolutePath();
+                    return;
+                }catch(Exception ex){
+                    Log.e("ocelot.service", "Failed to save payload to "+temp, ex);
+                }
+            }
+            update.payload = "";
+        }
+
         public void handle(Message update){
-            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(Service.this);
+            SharedPreferences prefs = getPreferences();
             if(!update.from.equals(client.username)
                     && (chat == null || !update.channel.equals(chat.getChannel().getName()))
                     && (prefs.getBoolean("notifications", true)
@@ -273,10 +383,15 @@ public class Service extends android.app.Service {
 
         public void handle(Connect update){
             reconnectCounter = 0;
-            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(Service.this);
+            SharedPreferences prefs = getPreferences();
             for(String channel : prefs.getStringSet("channels", new HashSet<>())){
                 client.s("JOIN", "channel", channel);
             }
+            startForeground();
+        }
+
+        public void handle(Disconnect update){
+            stopForeground(true);
         }
 
         public void handle(ConnectionLost update){
