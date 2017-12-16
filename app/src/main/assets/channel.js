@@ -1,19 +1,15 @@
-var channel;
-document.addEventListener("DOMContentLoaded", function(event){
-    channel = document.getElementById("channel");
-})
+var channel = document.getElementById("channel");
 
-var constructElement = function(tag, options){
-    var el = document.createElement(tag);
+var constructElement = function(options){
+    var el = document.createElement(options.tag);
     el.setAttribute("class", (options.classes||[]).join(" "));
     if(options.text) el.innerText = options.text;
     if(options.html) el.innerHTML = options.html;
     for(var attr in (options.attributes||{})){
         el.setAttribute(attr, options.attributes[attr]);
     }
-    for(var tag in (options.elements||{})){
-        var sub = constructElement(tag, options.elements[tag]);
-        el.appendChild(sub);
+    for(var i in (options.elements||[])){
+        el.appendChild(constructElement(options.elements[i]));
     }
     return el;
 };
@@ -57,34 +53,95 @@ var clear = function(){
     }
 };
 
-var showText = function(update){
-    var element = constructElement("div", {
+var matchesFrom = function(node, from){
+    return node.children[0].children[1].innerText === from;
+};
+
+var isAtBottom = function(){
+    return (window.innerHeight + window.scrollY) >= document.body.offsetHeight;
+};
+
+var lastInserted = null;
+var addScrollHandler = function(element){
+    if(!isAtBottom()) return element;
+    lastInserted = element;
+    var elements = element.querySelectorAll("img,audio,video");
+    for(var i=0; i<elements.length; i++){
+        elements[i].addEventListener("load", function(){
+            if(lastInserted === element)
+                element.scrollIntoView();
+        });
+    }
+    return element;
+};
+
+var constructUpdate = function(update){
+    return addScrollHandler(constructElement({
+        tag: "div",
         classes: ["update", update.source],
         attributes: {"data-clock": update.clock},
-        elements: {
-            time: {
+        elements: [{
+            tag: "div",
+            classes: ["header"],
+            elements: [{
+                tag: "time",
                 classes: ["clock"],
                 text: formatTime(update.clock)
-            },
-            a: {
+            },{
+                tag: "a",
                 classes: ["from"],
-                text: update.from,
-                attributes: {style: "color:"+objectColor(update.from)}
-            },
-            span: {
+                attributes: (update.source==="self"?{}:{style: "color: "+objectColor(update.from)}),
+                text: update.from
+            },{
+                tag: "span",
                 classes: ["text"],
                 html: update.text
-            }
-        }
-    });
-    // Ensure in-order insert.
+            }]
+        }]
+    }));
+};
+
+var constructUpdateText = function(update){
+    return addScrollHandler(constructElement({
+        tag: "div",
+        classes: ["content"],
+        elements: [{
+            tag: "time",
+            classes: ["clock"],
+            text: formatTime(update.clock)
+        },{
+            tag: "span",
+            classes: ["text"],
+            html: update.text
+        }]
+    }));
+};
+
+var insertText = function(update){
+    // Ensure in-order insert / append.
+    var previous = null;
     var children = channel.children;
     for (var i=0; i<children.length; i++) {
-        if(update.clock < parseInt(children[i].getAttribute("data-clock"))){
-            channel.insertBefore(element, children[i]);
-            return;
+        var child = children[i];
+        if(update.clock < parseInt(child.getAttribute("data-clock"))){
+            if(previous && matchesFrom(previous, update.from)){
+                return previous.appendChild(constructUpdateText(update));
+            }else{
+                return channel.insertBefore(constructUpdate(update), child);
+            }
         }
+        previous = child;
     }
-    channel.appendChild(element);
-    element.scrollIntoView(false);
+    var last = children[children.length-1];
+    if(last && matchesFrom(last, update.from)){
+        return last.appendChild(constructUpdateText(update));
+    }else{
+        return channel.appendChild(constructUpdate(update));
+    }
+}
+
+var showText = function(update){
+    var scroll = update.source === "self" || isAtBottom();
+    var element = insertText(update);
+    if(scroll) element.scrollIntoView();
 };

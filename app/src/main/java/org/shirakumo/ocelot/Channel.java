@@ -152,9 +152,6 @@ public class Channel extends Fragment{
     }
 
     public void showHTML(long clock, String from, String html){
-        // FIXME: maybe we should have usernames as a "header" and concatenate bodies
-        //        together if they are consecutively from the same person. Would at least
-        //        make the output a lot more bearable.
         // FIXME: Update channel button to indicate more messages.
         runScript("showText({"
                 +"source:"+Toolkit.prin1(from.equals(listener.getUsername())?"self":"other")+","

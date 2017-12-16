@@ -334,7 +334,7 @@ public class Service extends android.app.Service implements SharedPreferences.On
         }
 
         public void handle(Join update){
-            if(!update.channel.equals(client.servername)) {
+            if(!update.channel.equals(client.servername) && update.from.equals(client.username)) {
                 client.s("BACKFILL", "channel", update.channel);
             }
         }

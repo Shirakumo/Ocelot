@@ -1,16 +1,17 @@
 (\#channel
  :font-family monospace
  (.update
-  :display flex
-  (>* :padding 2px 5px 2px 5px)
-  (.clock :font-size 0.9em
-          :text-align center
-          :vertical-align middle)
-  (.from :min-width 182pt
-         :max-width 182pt
-         :overflow hidden
+  :margin-top 0.2em
+  (>* :display flex
+      :align-items flex-start)
+  ((.content .clock) :color gray)
+  (.clock :text-align center
+          :margin-right 0.5em)
+  (.from :overflow hidden
          :white-space nowrap
-         :text-overflow ellipsis)
+         :text-overflow ellipsis
+         :margin-left 0.5em
+         :min-width 100px)
   (.text :word-wrap break-word
          :white-space pre-wrap
          :min-width 0px

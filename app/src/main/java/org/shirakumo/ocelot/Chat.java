@@ -36,6 +36,7 @@ import java.util.Map;
 import org.shirakumo.lichat.CL;
 import org.shirakumo.lichat.Handler;
 import org.shirakumo.lichat.Payload;
+import org.shirakumo.lichat.updates.Failure;
 import org.shirakumo.lichat.updates.Leave;
 import org.shirakumo.lichat.updates.NoSuchChannel;
 import org.shirakumo.lichat.updates.Update;
@@ -94,10 +95,11 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         });
 
         addCommand("close", (Channel c, String[] args)->{
-            Object id = ((Update)binder.getClient().s("LEAVE","channel", c.getName())).id;
-            binder.getClient().addCallback((Integer)id, (Update u)->{
+            int id = binder.getClient().nextId();
+            binder.getClient().addCallback(id, (Update u)->{
                 if(u instanceof Leave || u instanceof NoSuchChannel) removeChannel(c);
             });
+            binder.getClient().s("LEAVE","channel", c.getName(), "id", id);
         });
 
         addCommand("create", (Channel c, String[] args)->{
@@ -112,6 +114,19 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         addCommand("users", (Channel c, String[] args)->{
             binder.getClient().s("USERS",
                     "channel", c.getName());
+        });
+
+        addCommand("register", (Channel c, String[] args)->{
+            int id = binder.getClient().nextId();
+            binder.getClient().addCallback(id, (Update u)->{
+                if(u instanceof Failure){
+                    c.showText(u.clock, u.from, "Failed to register: "+((Failure)u).text);
+                }else{
+                    c.showText(u.clock, u.from, "Successfully registered your account. Don't forget to set the password on login.");
+                }
+            });
+            binder.getClient().s("REGISTER",
+                    "password", args[1], "id", id);
         });
 
         addCommand("connect", (Channel c, String[] args)->{
