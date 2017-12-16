@@ -1,5 +1,6 @@
 package org.shirakumo.ocelot;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -265,13 +266,22 @@ public class Channel extends Fragment{
     }
 
     @Override
+    public void onAttach(Activity context) {
+        super.onAttach(context);
+        try {
+            listener = (ChannelListener) context;
+        } catch (ClassCastException e) {
+            throw new ClassCastException(context.toString()+" must implement ChannelListener");
+        }
+    }
+
+    @Override
     public void onAttach(Context context) {
         super.onAttach(context);
         try {
             listener = (ChannelListener) context;
         } catch (ClassCastException e) {
-            throw new ClassCastException(context.toString()
-                    + " must implement ChannelListener");
+            throw new ClassCastException(context.toString()+" must implement ChannelListener");
         }
     }
 

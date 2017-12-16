@@ -1,5 +1,6 @@
 package org.shirakumo.ocelot;
 
+import android.app.Activity;
 import android.app.Dialog;
 import android.content.Context;
 import android.os.Bundle;
@@ -75,14 +76,24 @@ public class EmoteList extends DialogFragment {
     }
 
     @Override
+    public void onAttach(Activity context) {
+        super.onAttach(context);
+        try {
+            listener = (EmoteListListener) context;
+            if(view != null) showEmotes(listener.getEmotes());
+        } catch (ClassCastException e) {
+            throw new ClassCastException(context.toString()+" must implement EmoteListListener");
+        }
+    }
+
+    @Override
     public void onAttach(Context context) {
         super.onAttach(context);
         try {
             listener = (EmoteListListener) context;
             if(view != null) showEmotes(listener.getEmotes());
         } catch (ClassCastException e) {
-            throw new ClassCastException(context.toString()
-                    + " must implement EmoteListListener");
+            throw new ClassCastException(context.toString()+" must implement EmoteListListener");
         }
     }
 
