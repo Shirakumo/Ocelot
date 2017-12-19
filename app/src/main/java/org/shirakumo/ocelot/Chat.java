@@ -15,9 +15,14 @@ import android.content.ComponentName;
 import android.os.IBinder;
 import android.os.PersistableBundle;
 import android.preference.PreferenceManager;
+import android.support.design.widget.NavigationView;
 import android.support.v4.content.FileProvider;
+import android.support.v4.widget.DrawerLayout;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
@@ -53,6 +58,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     private Channel channel;
     private Service.Binder binder;
     private List<Runnable> onBindRunnables = new ArrayList<>();
+    private boolean killServiceOnDestroy = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState){
@@ -170,7 +176,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
             showChannel(savedInstanceState.getString("channel"));
         }
 
-        commands.get("help").execute(ensureChannel(SYSTEM_CHANNEL), null);
+        ensureChannel(SYSTEM_CHANNEL);
         String channelToShow = getIntent().getStringExtra("channel");
         if(channelToShow != null){
             showChannel(ensureChannel(channelToShow));
@@ -190,6 +196,14 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         tab.setTag(channel);
         tab.setOnClickListener((View v)->showChannel(channel));
         ((LinearLayout)findViewById(R.id.tabs)).addView(tab);
+        // Create drawer button
+        NavigationView view = findViewById(R.id.drawer);
+        Menu menu = view.getMenu().findItem(R.id.drawer_channels).getSubMenu();
+        menu.add(R.id.drawer_channels_group, Menu.NONE, Menu.NONE, channel.getName()).setOnMenuItemClickListener((vw)->{
+            showChannel(channel);
+            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
+            return true;
+        });
         Log.d("ocelot.chat", "Registered channel "+channel);
     }
 
@@ -334,9 +348,6 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     public void bind(){
         if(binder == null) {
             bindService(serviceIntent, serviceConnection, Context.BIND_IMPORTANT);
-            // Restore current state
-            for(File f : channelCacheDir().listFiles())
-                ensureChannel(f.getName()).loadState(f);
         }
     }
 
@@ -345,12 +356,6 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
             unbindService(serviceConnection);
             binder.unbind();
             binder = null;
-            // Save current state
-            for(File f : channelCacheDir().listFiles())
-                f.delete();
-            for(Channel c : channels.values()){
-                c.saveState(new File(channelCacheDir(), c.getName()));
-            }
         }
     }
 
@@ -400,7 +405,24 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     protected void onStart() {
         Log.d("ocelot.chat", "Starting");
         super.onStart();
+
+        // Load saved state if available
+        try{
+            for(String name : Toolkit.readStringFromFile(new File(getCacheDir(), "channels")).split("\n")){
+                ensureChannel(name).loadState(new File(channelCacheDir(), name));
+            }
+        }catch(Exception ex){
+            Log.w("ocelot.chat", "Failed to restore channel state.", ex);
+        }
+
         if(binder == null) startService(serviceIntent);
+        bind();
+    }
+
+    @Override
+    protected void onResume() {
+        Log.d("ocelot.chat", "Resuming");
+        super.onResume();
         bind();
     }
 
@@ -412,37 +434,36 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     }
 
     @Override
-    protected void onResume() {
-        Log.d("ocelot.chat", "Resuming");
-        super.onResume();
-        bind();
-    }
-
-    @Override
     protected void onStop() {
         Log.d("ocelot.chat", "Stopping");
         super.onStop();
         unbind();
+
+        // Save current state
+        try {
+            Toolkit.writeStringToFile(Toolkit.join(channels.keySet(), "\n"), new File(getCacheDir(), "channels"));
+            for(Channel c : channels.values()){
+                c.saveState(new File(channelCacheDir(), c.getName()));
+            }
+        }catch(Exception ex){
+            Log.w("ocelot.chat", "Failed to save channel state.", ex);
+        }
     }
 
     @Override
     protected void onDestroy() {
         Log.d("ocelot.chat", "Destroying");
         super.onDestroy();
+        if(killServiceOnDestroy) {
+            stopService(serviceIntent);
+        }
     }
 
     private boolean backPressed = false;
     @Override
     public void onBackPressed() {
         if(backPressed || (binder != null && !binder.getService().client.isConnected())) {
-            if(binder != null) {
-                binder.getService().disconnect();
-                unbind();
-            }
-            stopService(serviceIntent);
-            // Clear the cache since we're exiting for real.
-            for(File f : channelCacheDir().listFiles())
-                f.delete();
+            killServiceOnDestroy = true;
             finish();
         }else{
             backPressed = true;

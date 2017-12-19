@@ -12,11 +12,14 @@ import android.util.TypedValue;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -74,9 +77,8 @@ public class Toolkit {
     }
 
     public static String readAssetFileAsString(Context ctx, String sourceHtmlLocation){
-        InputStream is;
         try{
-            is = ctx.getAssets().open(sourceHtmlLocation);
+            InputStream is = ctx.getAssets().open(sourceHtmlLocation);
             int size = is.available();
 
             byte[] buffer = new byte[size];
@@ -90,10 +92,34 @@ public class Toolkit {
         return "";
     }
 
+    public static String readStringFromFile(File file) throws IOException{
+        InputStream is = new FileInputStream(file);
+        int size = is.available();
+
+        byte[] buffer = new byte[size];
+        is.read(buffer);
+        is.close();
+
+        return new String(buffer, "UTF-8");
+    }
+
     public static void writeStringToFile(String string, File file) throws IOException{
         BufferedWriter out = new BufferedWriter(new FileWriter(file));
         out.write(string);
         out.close();
+    }
+
+    public static void deleteDirectoryTree(File root){
+        List<File> files = new ArrayList<>();
+        files.addAll(Arrays.asList(root.listFiles()));
+        while(files.size() != 0){
+            File file = files.remove(files.size()-1);
+            if(file.isDirectory()){
+                files.addAll(Arrays.asList(file.listFiles()));
+            }else{
+                file.delete();
+            }
+        }
     }
 
     public static <T> T find(T object, T[] items){

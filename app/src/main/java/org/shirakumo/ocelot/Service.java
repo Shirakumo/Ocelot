@@ -217,15 +217,15 @@ public class Service extends android.app.Service implements SharedPreferences.On
         try {
             return File.createTempFile(name, "." + type, getExternalCacheDir());
         } catch(Exception ex){
-            Log.e("ocelot.chat", "Failed to create temporary file.", ex);
+            Log.e("ocelot.service", "Failed to create temporary file.", ex);
             return null;
         }
     }
 
-    public void clearCache(){
-        for(File file : getExternalCacheDir().listFiles()){
-            if(file.isFile()) file.delete();
-        }
+    public void clearCache() {
+        Log.d("ocelot.service", "Clearing caches.");
+        Toolkit.deleteDirectoryTree(getExternalCacheDir());
+        Toolkit.deleteDirectoryTree(getCacheDir());
     }
 
     public void sendFile(String channel, Uri file){

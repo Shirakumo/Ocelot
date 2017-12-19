@@ -51,24 +51,6 @@ public class Channel extends Fragment{
         // Required empty public constructor
     }
 
-    public void saveState(File file){
-        try {
-            BufferedWriter out = new BufferedWriter(new FileWriter(file));
-            for(String script : runScripts) out.write(script);
-            out.close();
-        }catch(Exception ex){
-            Log.w("ocelot.chat", name+" failed to save state to "+file, ex);
-        }
-    }
-
-    public void loadState(File file){
-        try{
-            BufferedReader in = new BufferedReader(new FileReader(file));
-        }catch(Exception ex){
-
-        }
-    }
-
     public String replaceEmotes(String text){
         if(!listener.getPreferences().getBoolean("show_emotes", true)) return text;
 
@@ -255,8 +237,6 @@ public class Channel extends Fragment{
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         if(savedInstanceState != null) {
             name = savedInstanceState.getString("name");
-            for(String script : savedInstanceState.getStringArrayList("scripts"))
-                scheduledFuncs.add(()->runScript(script));
         }
 
         WebView web = (WebView)inflater.inflate(R.layout.fragment_channel, container, false);
@@ -293,10 +273,31 @@ public class Channel extends Fragment{
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
-        Log.d("ocelot.channel", name+" saving state.");
         super.onSaveInstanceState(outState);
         outState.putString("name", name);
-        outState.putStringArrayList("scripts", runScripts);
+    }
+
+    public void saveState(File file){
+        Log.d("ocelot.channel", name+" saving sate to "+file);
+        try {
+            BufferedWriter out = new BufferedWriter(new FileWriter(file));
+            for(String script : runScripts) out.write(script);
+            out.close();
+        }catch(Exception ex){
+            Log.w("ocelot.channel", name+" failed to save state to "+file, ex);
+        }
+    }
+
+    public void loadState(File file){
+        Log.d("ocelot.channel", name+" loading sate from "+file);
+        try{
+            String text = Toolkit.readStringFromFile(file);
+            runScript("clear();");
+            runScripts.clear();
+            runScript(text);
+        }catch(Exception ex){
+            Log.w("ocelot.channel", name+" failed to load state from "+file, ex);
+        }
     }
 
     @Override
