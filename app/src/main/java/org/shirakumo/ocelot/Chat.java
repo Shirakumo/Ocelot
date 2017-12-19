@@ -13,6 +13,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.ComponentName;
 import android.os.IBinder;
+import android.os.PersistableBundle;
 import android.preference.PreferenceManager;
 import android.support.v4.content.FileProvider;
 import android.util.Log;
@@ -50,18 +51,19 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     private HashMap<String, Channel> channels;
     private HashMap<String, Command> commands;
     private Channel channel;
-    private long lastSeen = 0;
     private Service.Binder binder;
     private List<Runnable> onBindRunnables = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_chat);
         serviceIntent = new Intent(this, Service.class);
         handler = new UpdateHandler(this);
         channels = new HashMap<>();
         commands = new HashMap<>();
+        channelCacheDir().mkdirs();
 
         ((TextView)findViewById(R.id.input)).setOnEditorActionListener((TextView v, int actionId, KeyEvent event)->{
             if (actionId == EditorInfo.IME_ACTION_SEND ||
@@ -151,7 +153,6 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
 
         addCommand("clear", (Channel c, String[] args)->{
             c.clear();
-            binder.getService().clearChannelUpdates(c.getName());
         });
 
         final SharedPreferences hasDefaults = getSharedPreferences(PreferenceManager.KEY_HAS_SET_DEFAULT_VALUES, Context.MODE_PRIVATE);
@@ -160,6 +161,13 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
             PreferenceManager.setDefaultValues(this, R.xml.settings_notification, true);
             PreferenceManager.setDefaultValues(this, R.xml.settings_looks, true);
             generateStyleSheet();
+        }
+
+        if(savedInstanceState != null){
+            Log.d("ocelot.chat", "SAVED STATE: "+savedInstanceState);
+            for(String name : savedInstanceState.getStringArray("channels"))
+                ensureChannel(name);
+            showChannel(savedInstanceState.getString("channel"));
         }
 
         commands.get("help").execute(ensureChannel(SYSTEM_CHANNEL), null);
@@ -319,19 +327,30 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         }
     }
 
+    private File channelCacheDir(){
+        return new File(getCacheDir(), "channel-cache/");
+    }
+
     public void bind(){
         if(binder == null) {
             bindService(serviceIntent, serviceConnection, Context.BIND_IMPORTANT);
+            // Restore current state
+            for(File f : channelCacheDir().listFiles())
+                ensureChannel(f.getName()).loadState(f);
         }
     }
 
     public void unbind(){
         if(binder != null){
             unbindService(serviceConnection);
-            lastSeen = CL.getUniversalTime();
             binder.unbind();
-            for(Channel c : channels.values()) c.clear();
             binder = null;
+            // Save current state
+            for(File f : channelCacheDir().listFiles())
+                f.delete();
+            for(Channel c : channels.values()){
+                c.saveState(new File(channelCacheDir(), c.getName()));
+            }
         }
     }
 
@@ -368,6 +387,13 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
                 }
             }
         }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putStringArray("channels", channels.keySet().toArray(new String[]{}));
+        outState.putString("channel", channel.getName());
     }
 
     @Override
@@ -414,6 +440,9 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
                 unbind();
             }
             stopService(serviceIntent);
+            // Clear the cache since we're exiting for real.
+            for(File f : channelCacheDir().listFiles())
+                f.delete();
             finish();
         }else{
             backPressed = true;
@@ -464,7 +493,6 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
             binder.bind(Chat.this);
             if(getPreferences().getBoolean("autoconnect", false))
                 binder.getService().connect();
-            binder.getService().replayUpdates(lastSeen, Chat.this);
             for(Runnable r : onBindRunnables) r.run();
             onBindRunnables.clear();
             Log.d("ocelot.chat", "Connected to "+binder.getService());

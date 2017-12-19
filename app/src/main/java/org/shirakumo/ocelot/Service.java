@@ -244,26 +244,6 @@ public class Service extends android.app.Service implements SharedPreferences.On
         }
     }
 
-    public void replayUpdates(long since, Handler handler){
-        // FIXME: do binary search for earliest matching update.
-        // FIXME: when do we clear this cache?
-        if(updates.isEmpty()) return;
-        int i = 0;
-        while(i < updates.size() && updates.get(i).clock < since) i++;
-        for(; i<updates.size(); i++){
-            handler.handle(updates.get(i));
-        }
-    }
-
-    public void clearChannelUpdates(String name){
-        for (Iterator<Update> it = updates.iterator(); it.hasNext(); ) {
-            Update u = it.next();
-            if(u instanceof ChannelUpdate && ((ChannelUpdate)u).channel.equals(name)){
-                it.remove();
-            }
-        }
-    }
-
     @Override
     public IBinder onBind(Intent intent) {
         return new Binder();
@@ -304,8 +284,11 @@ public class Service extends android.app.Service implements SharedPreferences.On
 
         public Service bind(Chat toBind){
             Log.d("ocelot.service", "Bound to "+toBind);
-            client.addHandler(toBind);
             chat = toBind;
+            client.addHandler(chat);
+            // Replay unseen updates
+            for(Update update : updates) chat.handle(update);
+            updates.clear();
             return Service.this;
         }
 
@@ -329,7 +312,8 @@ public class Service extends android.app.Service implements SharedPreferences.On
     private class UpdateHandler extends HandlerAdapter{
 
         public void handle(Update update){
-            updates.add(update);
+            if(chat == null)
+                updates.add(update);
             super.handle(update);
         }
 

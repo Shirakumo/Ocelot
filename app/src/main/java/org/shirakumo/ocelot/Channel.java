@@ -24,7 +24,11 @@ import org.shirakumo.lichat.CL;
 import org.shirakumo.lichat.Payload;
 import org.shirakumo.lichat.updates.Data;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CyclicBarrier;
@@ -36,16 +40,33 @@ import java.util.regex.Pattern;
 
 public class Channel extends Fragment{
     public static final String ARG_NAME = "name";
-    private static int idCounter = 1000;
 
     private String name;
-    private View view;
+    private WebView view;
     private ChannelListener listener;
-    private int outputId = idCounter++;
     private List<Runnable> scheduledFuncs = new ArrayList<>();
+    private ArrayList<String> runScripts = new ArrayList<>();
 
     public Channel() {
         // Required empty public constructor
+    }
+
+    public void saveState(File file){
+        try {
+            BufferedWriter out = new BufferedWriter(new FileWriter(file));
+            for(String script : runScripts) out.write(script);
+            out.close();
+        }catch(Exception ex){
+            Log.w("ocelot.chat", name+" failed to save state to "+file, ex);
+        }
+    }
+
+    public void loadState(File file){
+        try{
+            BufferedReader in = new BufferedReader(new FileReader(file));
+        }catch(Exception ex){
+
+        }
     }
 
     public String replaceEmotes(String text){
@@ -143,7 +164,8 @@ public class Channel extends Fragment{
     public void runScript(String text){
         if(view != null){
             Log.d("ocelot.channel", "Running: "+text);
-            ((WebView) view.findViewById(outputId)).loadUrl("javascript:(function(){"+text+"})()");
+            view.loadUrl("javascript:(function(){"+text+"})()");
+            runScripts.add(text);
         }else{
             // Will be run when the webview is done loading.
             scheduledFuncs.add(()->{
@@ -188,6 +210,7 @@ public class Channel extends Fragment{
 
     public void clear(){
         runScript("clear();");
+        runScripts.clear();
     }
 
     public String getInput(){
@@ -229,14 +252,15 @@ public class Channel extends Fragment{
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-        View v = inflater.inflate(R.layout.fragment_channel, container, false);
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        if(savedInstanceState != null) {
+            name = savedInstanceState.getString("name");
+            for(String script : savedInstanceState.getStringArrayList("scripts"))
+                scheduledFuncs.add(()->runScript(script));
+        }
 
-        String content = Toolkit.readAssetFileAsString((Context)listener, "channel.html");
+        WebView web = (WebView)inflater.inflate(R.layout.fragment_channel, container, false);
 
-        WebView web = v.findViewById(R.id.output);
-        web.setId(outputId);
         web.getSettings().setJavaScriptEnabled(true);
         web.getSettings().setAllowFileAccess(true);
         web.setWebViewClient(new WebViewClient() {
@@ -255,14 +279,24 @@ public class Channel extends Fragment{
             @Override
             public void onPageFinished(WebView vw, String url) {
                 super.onPageFinished(vw, url);
-                view = v;
+                view = web;
                 for(Runnable func : scheduledFuncs){func.run();}
                 scheduledFuncs.clear();
             }
         });
+
+        String content = Toolkit.readAssetFileAsString((Context)listener, "channel.html");
         web.loadDataWithBaseURL("file:///android_asset/", content, "text/html", "UTF-8", null);
 
-        return v;
+        return web;
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        Log.d("ocelot.channel", name+" saving state.");
+        super.onSaveInstanceState(outState);
+        outState.putString("name", name);
+        outState.putStringArrayList("scripts", runScripts);
     }
 
     @Override
