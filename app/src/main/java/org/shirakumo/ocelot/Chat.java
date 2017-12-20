@@ -26,6 +26,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -47,7 +48,7 @@ import org.shirakumo.lichat.updates.Leave;
 import org.shirakumo.lichat.updates.NoSuchChannel;
 import org.shirakumo.lichat.updates.Update;
 
-public class Chat extends Activity implements Channel.ChannelListener, EmoteList.EmoteListListener, Handler{
+public class Chat extends Activity implements Channel.ChannelListener, EmoteList.EmoteListListener, DrawerLayout.DrawerListener, Handler{
     public static final String SYSTEM_CHANNEL = "@System";
     private static final int SETTINGS_REQUEST = 1;
 
@@ -89,6 +90,8 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         });
 
         NavigationView view = findViewById(R.id.drawer);
+
+        ((DrawerLayout)findViewById(R.id.drawer_layout)).addDrawerListener(this);
 
         view.getMenu().findItem(R.id.drawer_settings).setOnMenuItemClickListener((vw)->{
             ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
@@ -442,6 +445,21 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
             }
         }
     }
+
+    @Override
+    public void onDrawerSlide(View drawerView, float slideOffset) {
+        InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+        imm.hideSoftInputFromWindow(drawerView.getWindowToken(), 0);
+    }
+
+    @Override
+    public void onDrawerStateChanged(int newState) {}
+
+    @Override
+    public void onDrawerOpened(View drawerView) {}
+
+    @Override
+    public void onDrawerClosed(View drawerView) {}
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {

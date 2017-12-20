@@ -2,9 +2,11 @@ package org.shirakumo.ocelot;
 
 import android.app.DialogFragment;
 import android.os.Bundle;
+import android.text.Html;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 
 public class About extends DialogFragment {
     public About() {
@@ -24,6 +26,11 @@ public class About extends DialogFragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_about, container, false);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            ((TextView) view.findViewById(R.id.about_text)).setText(Html.fromHtml(getString(R.string.app_description), Html.FROM_HTML_MODE_COMPACT));
+        }else{
+            ((TextView) view.findViewById(R.id.about_text)).setText(Html.fromHtml(getString(R.string.app_description)));
+        }
         return view;
     }
 }

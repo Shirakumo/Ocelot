@@ -1,7 +1,11 @@
 <resources>
     <string name="app_name">Ocelot</string>
     <string name="app_service_name">OcelotClient</string>
-    <string name="app_description">Ocelot is an open source Android client for the Lichat chat protocol.</string>
+    <string name="app_description"><![CDATA[
+        <p>Ocelot is an open source Android client for the Lichat chat protocol.</p>
+        <p>You can obtain the source code for Ocelot on <a href="https://github.com/Shirakumo/Ocelot">GitHub</a>.</p>
+        <p>Ocelot and Lichat are &copy; 2017 Shirakumo, <a href="https://shirakumo.org">www.shirakumo.org</a></p>
+    ]]></string>
     <string name="service_title">Ocelot</string>
     <string name="service_message">Ocelot is connected.</string>
     <string name="notification_group">Ocelot Notifications</string>
