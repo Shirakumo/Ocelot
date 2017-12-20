@@ -1,8 +1,10 @@
 package org.shirakumo.ocelot;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.FragmentTransaction;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.graphics.Color;
@@ -27,8 +29,11 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
@@ -43,10 +48,15 @@ import java.util.Map;
 import org.shirakumo.lichat.CL;
 import org.shirakumo.lichat.Handler;
 import org.shirakumo.lichat.Payload;
+import org.shirakumo.lichat.updates.Channels;
+import org.shirakumo.lichat.updates.Connect;
+import org.shirakumo.lichat.updates.ConnectionLost;
+import org.shirakumo.lichat.updates.Disconnect;
 import org.shirakumo.lichat.updates.Failure;
 import org.shirakumo.lichat.updates.Leave;
 import org.shirakumo.lichat.updates.NoSuchChannel;
 import org.shirakumo.lichat.updates.Update;
+import org.shirakumo.lichat.updates.Users;
 
 public class Chat extends Activity implements Channel.ChannelListener, EmoteList.EmoteListListener, DrawerLayout.DrawerListener, Handler{
     public static final String SYSTEM_CHANNEL = "@System";
@@ -89,23 +99,116 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
             runCommand("emotes");
         });
 
-        NavigationView view = findViewById(R.id.drawer);
-
         ((DrawerLayout)findViewById(R.id.drawer_layout)).addDrawerListener(this);
+        Menu menu = ((NavigationView)findViewById(R.id.drawer)).getMenu();
 
-        view.getMenu().findItem(R.id.drawer_settings).setOnMenuItemClickListener((vw)->{
+        menu.findItem(R.id.drawer_join).setOnMenuItemClickListener((vw)->{
+            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
+            int id = binder.getClient().nextId();
+            binder.getClient().addCallback(id, (u)->
+                runOnUiThread(()->{
+                    List<String> channels = ((Channels)u).channels;
+                    AutoCompleteTextView spinner = new AutoCompleteTextView(this);
+                    spinner.setHint(R.string.input_channel_name);
+                    spinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, channels));
+                    new AlertDialog.Builder(this)
+                            .setTitle(R.string.drawer_join)
+                            .setView(spinner)
+                            .setPositiveButton(R.string.button_ok, (DialogInterface dialog, int which)->{
+                                runCommand("join", spinner.getText().toString());
+                            }).show();
+                }));
+            binder.getClient().s("CHANNELS", "id", id);
+            return true;
+        });
+
+        menu.findItem(R.id.drawer_close).setOnMenuItemClickListener((vw)->{
+            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
+            runCommand("close");
+            return true;
+        });
+
+        menu.findItem(R.id.drawer_create).setOnMenuItemClickListener((vw)->{
+            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
+            EditText name = new EditText(this);
+            name.setHint(R.string.input_channel_name);
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.drawer_create)
+                    .setView(name)
+                    .setPositiveButton(R.string.button_ok, (DialogInterface dialog, int which)->{
+                        runCommand("create", name.getText().toString());
+                    }).show();
+            return true;
+        });
+
+        menu.findItem(R.id.drawer_pull).setOnMenuItemClickListener((vw)->{
+            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
+            int id = binder.getClient().nextId();
+            String channel = this.channel.getName();
+            binder.getClient().addCallback(id, (u)->
+                    runOnUiThread(()->{
+                        List<String> channels = ((Users)u).users;
+                        AutoCompleteTextView spinner = new AutoCompleteTextView(this);
+                        spinner.setHint(R.string.input_user_name);
+                        spinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, channels));
+                        new AlertDialog.Builder(this)
+                                .setTitle(R.string.drawer_pull)
+                                .setView(spinner)
+                                .setPositiveButton(R.string.button_ok, (DialogInterface dialog, int which)->{
+                                    runCommand("pull", spinner.getText().toString(), channel);
+                                }).show();
+                    }));
+            binder.getClient().s("USERS",
+                    "channel", binder.getClient().servername,
+                    "id", id);
+            return true;
+        });
+
+        menu.findItem(R.id.drawer_kick).setOnMenuItemClickListener((vw)->{
+            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
+            int id = binder.getClient().nextId();
+            String channel = this.channel.getName();
+            binder.getClient().addCallback(id, (u)->
+                    runOnUiThread(()->{
+                        List<String> channels = ((Users)u).users;
+                        AutoCompleteTextView spinner = new AutoCompleteTextView(this);
+                        spinner.setHint(R.string.input_user_name);
+                        spinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, channels));
+                        new AlertDialog.Builder(this)
+                                .setTitle(R.string.drawer_kick)
+                                .setView(spinner)
+                                .setPositiveButton(R.string.button_ok, (DialogInterface dialog, int which)->{
+                                    runCommand("kick", spinner.getText().toString(), channel);
+                                }).show();
+                    }));
+            binder.getClient().s("USERS",
+                    "channel", channel,
+                    "id", id);
+            return true;
+        });
+
+        menu.findItem(R.id.drawer_connect).setOnMenuItemClickListener((vw)->{
+            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
+            if(binder.getClient().isConnected())
+                runCommand("disconnect");
+            else
+                runCommand("connect");
+            return true;
+        });
+
+        menu.findItem(R.id.drawer_settings).setOnMenuItemClickListener((vw)->{
             ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
             runCommand("settings");
             return true;
         });
 
-        view.getMenu().findItem(R.id.drawer_about).setOnMenuItemClickListener((vw)->{
+        menu.findItem(R.id.drawer_about).setOnMenuItemClickListener((vw)->{
             ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
             runCommand("about");
             return true;
         });
 
-        view.getMenu().findItem(R.id.drawer_quit).setOnMenuItemClickListener((vw)->{
+        menu.findItem(R.id.drawer_quit).setOnMenuItemClickListener((vw)->{
             ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
             runCommand("quit");
             return true;
@@ -116,6 +219,18 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
             binder.getClient().s("JOIN",
                     "channel", name);
             showChannel(ensureChannel(name));
+        });
+
+        addCommand("pull", (Channel c, String[] args)->{
+            binder.getClient().s("PULL",
+                    "channel", (args.length>=3)?args[2]:c.getName(),
+                    "target", args[1]);
+        });
+
+        addCommand("kick", (Channel c, String[] args)->{
+            binder.getClient().s("KICK",
+                    "channel", (args.length>=3)?args[2]:c.getName(),
+                    "target", args[1]);
         });
 
         addCommand("leave", (Channel c, String[] args)->{
@@ -158,12 +273,9 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
                     "password", args[1], "id", id);
         });
 
-        addCommand("connect", (Channel c, String[] args)->{
-            binder.getService().connect();
-        });
-
-        addCommand("disconnect", (Channel c, String[] args)->{
-            binder.getService().disconnect();
+        addCommand("permissions", (Channel c, String[] args)->{
+            binder.getClient().s("PERMISSIONS",
+                    "channel", c.getName());
         });
 
         addCommand("emotes", (Channel c, String[] args)->{
@@ -173,6 +285,14 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
 
         addCommand("upload", (Channel c, String[] args)->{
             requestSendFile(channel);
+        });
+
+        addCommand("connect", (Channel c, String[] args)->{
+            binder.getService().connect();
+        });
+
+        addCommand("disconnect", (Channel c, String[] args)->{
+            binder.getService().disconnect();
         });
 
         addCommand("help", (Channel c, String[] args)->{
@@ -275,6 +395,10 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
                 .commit();
         LinearLayout tabs = (LinearLayout)findViewById(R.id.tabs);
         tabs.removeView(tabs.findViewWithTag(channel));
+        NavigationView view = findViewById(R.id.drawer);
+        Menu menu = view.getMenu().findItem(R.id.drawer_channels).getSubMenu();
+        menu.removeItem(channelMenuMap.get(channel));
+        channelMenuMap.remove(channel);
         Log.d("ocelot.chat", "Removed channel "+channel.getName());
     }
 
@@ -327,9 +451,13 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     }
 
     public void runCommand(String... args){
-        Command command = commands.get(args[0]);
+        Command command = commands.get(args[0].toLowerCase());
         if(command != null)
-            command.execute(channel, args);
+            try {
+                command.execute(channel, args);
+            }catch(Exception ex){
+                channel.showText(ex.getMessage());
+            }
         else
             channel.showText("No such command "+args[0]);
     }
@@ -550,13 +678,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         if(input.isEmpty()) return;
 
         if(input.startsWith("/")){
-            String[] args = input.substring(1).split(" +");
-            Command command = commands.get(args[0].toLowerCase());
-            if(command != null){
-                command.execute(channel, args);
-            }else{
-                channel.showText("No such command "+args[0]);
-            }
+            runCommand(input.substring(1).split(" +"));
         }else{
             binder.getClient().s("MESSAGE",
                     "channel", channel.getName(),
@@ -564,8 +686,31 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         }
     }
 
+    public void onDisconnect(){
+        Menu menu = ((NavigationView)findViewById(R.id.drawer)).getMenu();
+        menu.findItem(R.id.drawer_connect).setTitle(R.string.drawer_connect);
+        menu.findItem(R.id.drawer_join).setEnabled(false);
+        menu.findItem(R.id.drawer_close).setEnabled(false);
+        menu.findItem(R.id.drawer_create).setEnabled(false);
+        menu.findItem(R.id.drawer_pull).setEnabled(false);
+        menu.findItem(R.id.drawer_kick).setEnabled(false);
+    }
+
+    public void onConnect(){
+        Menu menu = ((NavigationView)findViewById(R.id.drawer)).getMenu();
+        menu.findItem(R.id.drawer_connect).setTitle(R.string.drawer_disconnect);
+        menu.findItem(R.id.drawer_join).setEnabled(true);
+        menu.findItem(R.id.drawer_close).setEnabled(true);
+        menu.findItem(R.id.drawer_create).setEnabled(true);
+        menu.findItem(R.id.drawer_pull).setEnabled(true);
+        menu.findItem(R.id.drawer_kick).setEnabled(true);
+    }
+
     public void handle(Update update){
         runOnUiThread(()->{
+            if(update instanceof Connect) onConnect();
+            else if(update instanceof Disconnect) onDisconnect();
+            else if(update instanceof ConnectionLost) onDisconnect();
             handler.handle(update);
         });
     }
@@ -579,6 +724,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         public void onServiceConnected(ComponentName className, IBinder ibinder) {
             binder = (Service.Binder)ibinder;
             binder.bind(Chat.this);
+            if(binder.getClient().isConnected()) onConnect(); else onDisconnect();
             if(getPreferences().getBoolean("autoconnect", false))
                 binder.getService().connect();
             for(Runnable r : onBindRunnables) r.run();
@@ -589,6 +735,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         @Override
         public void onServiceDisconnected(ComponentName arg0) {
             binder = null;
+            onDisconnect();
             Log.w("ocelot.chat", "Disconnected from service.");
         }
     };

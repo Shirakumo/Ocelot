@@ -6,6 +6,9 @@
         <p>You can obtain the source code for Ocelot on <a href="https://github.com/Shirakumo/Ocelot">GitHub</a>.</p>
         <p>Ocelot and Lichat are &copy; 2017 Shirakumo, <a href="https://shirakumo.org">www.shirakumo.org</a></p>
     ]]></string>
+    <string name="button_ok">Ok</string>
+    <string name="input_channel_name">Channel name</string>
+    <string name="input_user_name">User name</string>
     <string name="service_title">Ocelot</string>
     <string name="service_message">Ocelot is connected.</string>
     <string name="notification_group">Ocelot Notifications</string>
@@ -61,6 +64,16 @@
     <string name="setting_look_emotes_summary">Will turn :emotes: into images</string>
     <string name="setting_look_data">Show data</string>
     <string name="setting_look_data_summary">Will show images, videos, etc. in-line</string>
+    <string name="drawer_channels">Channels</string>
+    <string name="drawer_manage">Manage</string>
+    <string name="drawer_join">Join Channel</string>
+    <string name="drawer_close">Leave Channel</string>
+    <string name="drawer_create">Create Channel</string>
+    <string name="drawer_pull">Pull User to Channel</string>
+    <string name="drawer_kick">Kick User from Channel</string>
+    <string name="drawer_connect">Connect</string>
+    <string name="drawer_disconnect">Disconnect</string>
+    <string name="drawer_system">System</string>
     <string name="drawer_settings">Settings</string>
     <string name="drawer_quit">Quit</string>
     <string name="drawer_about">About</string>

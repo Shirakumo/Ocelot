@@ -195,7 +195,6 @@ public class Service extends android.app.Service implements SharedPreferences.On
     public void disconnect(){
         if(client.isConnected()){
             client.disconnect();
-            Log.d("ocelot.service", "Closed connection.");
         }
     }
 
@@ -366,6 +365,7 @@ public class Service extends android.app.Service implements SharedPreferences.On
         }
 
         public void handle(Connect update){
+            Log.d("ocelot.service", "Connection established.");
             reconnectCounter = 0;
             SharedPreferences prefs = getPreferences();
             for(String channel : prefs.getStringSet("channels", new HashSet<>())){
@@ -375,6 +375,7 @@ public class Service extends android.app.Service implements SharedPreferences.On
         }
 
         public void handle(Disconnect update){
+            Log.d("ocelot.service", "Closed connection.");
             stopForeground(true);
         }
 

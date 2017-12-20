@@ -2,7 +2,7 @@
 <menu xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:title="Channels"
+        android:title="@string/drawer_channels"
         android:id="@+id/drawer_channels">
         <menu>
             <group
@@ -11,7 +11,39 @@
             </group>
         </menu>
     </item>
-    <item android:title="System">
+    <item android:title="@string/drawer_manage">
+        <menu>
+
+            <item
+                android:id="@+id/drawer_join"
+                android:enabled="false"
+                android:icon="@drawable/ic_input_black_24dp"
+                android:title="@string/drawer_join" />
+            <item
+                android:id="@+id/drawer_close"
+                android:enabled="false"
+                android:icon="@drawable/ic_people_outline_black_24dp"
+                android:title="@string/drawer_close" />
+            <item
+                android:id="@+id/drawer_create"
+                android:enabled="false"
+                android:icon="@drawable/ic_group_add_black_24dp"
+                android:title="@string/drawer_create" />
+            <item
+                android:id="@+id/drawer_pull"
+                android:icon="@drawable/ic_person_add_black_24dp"
+                android:title="@string/drawer_pull" />
+            <item
+                android:id="@+id/drawer_kick"
+                android:icon="@drawable/ic_person_outline_black_24dp"
+                android:title="@string/drawer_kick" />
+            <item
+                android:id="@+id/drawer_connect"
+                android:icon="@drawable/ic_settings_ethernet_black_24dp"
+                android:title="@string/drawer_connect" />
+        </menu>
+    </item>
+    <item android:title="@string/drawer_system">
         <menu>
             <item
                 android:id="@+id/drawer_settings"
