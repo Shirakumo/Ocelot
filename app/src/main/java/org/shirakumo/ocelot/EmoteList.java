@@ -31,17 +31,7 @@ public class EmoteList extends DialogFragment {
     }
 
     public static EmoteList newInstance() {
-        EmoteList fragment = new EmoteList();
-        Bundle args = new Bundle();
-        fragment.setArguments(args);
-        return fragment;
-    }
-
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        if (getArguments() != null) {
-        }
+        return new EmoteList();
     }
 
     public void onResume(){

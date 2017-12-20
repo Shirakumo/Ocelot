@@ -52,23 +52,22 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     private static final int SETTINGS_REQUEST = 1;
 
     private Intent serviceIntent;
-    private UpdateHandler handler;
-    private HashMap<String, Channel> channels;
-    private HashMap<String, Command> commands;
+    private UpdateHandler handler = new UpdateHandler(this);
+    private HashMap<String, Channel> channels = new HashMap<>();
+    private HashMap<String, Command> commands = new HashMap<>();
+    private List<Runnable> onBindRunnables = new ArrayList<>();
+    private HashMap<Channel, Integer> channelMenuMap = new HashMap<>();
     private Channel channel;
     private Service.Binder binder;
-    private List<Runnable> onBindRunnables = new ArrayList<>();
     private boolean killServiceOnDestroy = false;
+    private int idCounter = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);
 
-        setContentView(R.layout.activity_chat);
         serviceIntent = new Intent(this, Service.class);
-        handler = new UpdateHandler(this);
-        channels = new HashMap<>();
-        commands = new HashMap<>();
+        setContentView(R.layout.activity_chat);
         channelCacheDir().mkdirs();
 
         ((TextView)findViewById(R.id.input)).setOnEditorActionListener((TextView v, int actionId, KeyEvent event)->{
@@ -82,12 +81,31 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         });
 
         findViewById(R.id.send_file).setOnClickListener((vw)->{
-            requestSendFile(channel);
+            runCommand("upload");
         });
 
         findViewById(R.id.select_emote).setOnClickListener((vw)->{
-            FragmentTransaction ft = getFragmentManager().beginTransaction();
-            EmoteList.newInstance().show(ft, "emotes");
+            runCommand("emotes");
+        });
+
+        NavigationView view = findViewById(R.id.drawer);
+
+        view.getMenu().findItem(R.id.drawer_settings).setOnMenuItemClickListener((vw)->{
+            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
+            runCommand("settings");
+            return true;
+        });
+
+        view.getMenu().findItem(R.id.drawer_about).setOnMenuItemClickListener((vw)->{
+            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
+            runCommand("about");
+            return true;
+        });
+
+        view.getMenu().findItem(R.id.drawer_quit).setOnMenuItemClickListener((vw)->{
+            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
+            runCommand("quit");
+            return true;
         });
 
         addCommand("join", (Channel c, String[] args)->{
@@ -145,6 +163,15 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
             binder.getService().disconnect();
         });
 
+        addCommand("emotes", (Channel c, String[] args)->{
+            FragmentTransaction ft = getFragmentManager().beginTransaction();
+            EmoteList.newInstance().show(ft, "emotes");
+        });
+
+        addCommand("upload", (Channel c, String[] args)->{
+            requestSendFile(channel);
+        });
+
         addCommand("help", (Channel c, String[] args)->{
             String[] commandNames = new String[commands.keySet().size()];
             commandNames = (String[])commands.keySet().toArray(commandNames);
@@ -157,8 +184,18 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
             startActivityForResult(i, SETTINGS_REQUEST);
         });
 
+        addCommand("about", (Channel c, String[] args)->{
+            FragmentTransaction ft = getFragmentManager().beginTransaction();
+            About.newInstance().show(ft, "about");
+        });
+
         addCommand("clear", (Channel c, String[] args)->{
             c.clear();
+        });
+
+        addCommand("quit", (Channel c, String[] args)->{
+            killServiceOnDestroy = true;
+            finish();
         });
 
         final SharedPreferences hasDefaults = getSharedPreferences(PreferenceManager.KEY_HAS_SET_DEFAULT_VALUES, Context.MODE_PRIVATE);
@@ -197,13 +234,15 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         tab.setOnClickListener((View v)->showChannel(channel));
         ((LinearLayout)findViewById(R.id.tabs)).addView(tab);
         // Create drawer button
+        int id = idCounter++;
+        channelMenuMap.put(channel, id);
         NavigationView view = findViewById(R.id.drawer);
         Menu menu = view.getMenu().findItem(R.id.drawer_channels).getSubMenu();
-        menu.add(R.id.drawer_channels_group, Menu.NONE, Menu.NONE, channel.getName()).setOnMenuItemClickListener((vw)->{
-            showChannel(channel);
+        menu.add(R.id.drawer_channels_group, id, Menu.NONE, channel.getName()).setOnMenuItemClickListener((vw)->{
             ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
+            showChannel(channel);
             return true;
-        });
+        }).setCheckable(true);
         Log.d("ocelot.chat", "Registered channel "+channel);
     }
 
@@ -251,6 +290,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     public Channel showChannel(Channel toShow){
         FragmentTransaction ft = getFragmentManager().beginTransaction();
         LinearLayout tabs = (LinearLayout)findViewById(R.id.tabs);
+        NavigationView view = findViewById(R.id.drawer);
         for(Channel c : channels.values()){
             if(c != toShow){
                 ft.hide(c);
@@ -261,6 +301,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         ft.addToBackStack(null);
         ft.commit();
         ((ToggleButton)tabs.findViewWithTag(toShow)).setChecked(true);
+        view.setCheckedItem(channelMenuMap.get(toShow));
         channel = toShow;
         return channel;
     }
@@ -280,6 +321,14 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         commands.remove(name);
         Log.d("ocelot.chat", "Removed command "+name);
         return command;
+    }
+
+    public void runCommand(String... args){
+        Command command = commands.get(args[0]);
+        if(command != null)
+            command.execute(channel, args);
+        else
+            channel.showText("No such command "+args[0]);
     }
 
     public String getUsername(){

@@ -1,6 +1,7 @@
 <resources>
     <string name="app_name">Ocelot</string>
     <string name="app_service_name">OcelotClient</string>
+    <string name="app_description">Ocelot is an open source Android client for the Lichat chat protocol.</string>
     <string name="service_title">Ocelot</string>
     <string name="service_message">Ocelot is connected.</string>
     <string name="notification_group">Ocelot Notifications</string>
