@@ -20,6 +20,7 @@ import android.preference.PreferenceManager;
 import android.support.design.widget.NavigationView;
 import android.support.v4.content.FileProvider;
 import android.support.v4.widget.DrawerLayout;
+import android.text.InputFilter;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -75,11 +76,14 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
 
     @Override
     protected void onCreate(Bundle savedInstanceState){
+        setContentView(R.layout.activity_chat);
         super.onCreate(savedInstanceState);
 
         serviceIntent = new Intent(this, Service.class);
-        setContentView(R.layout.activity_chat);
         channelCacheDir().mkdirs();
+
+        if(!getPreferences().getBoolean("setup", false))
+            startActivity(new Intent(this, FirstTimeSetup.class));
 
         ((TextView)findViewById(R.id.input)).setOnEditorActionListener((TextView v, int actionId, KeyEvent event)->{
             if (actionId == EditorInfo.IME_ACTION_SEND ||
@@ -110,6 +114,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
                     List<String> channels = ((Channels)u).channels;
                     AutoCompleteTextView spinner = new AutoCompleteTextView(this);
                     spinner.setHint(R.string.input_channel_name);
+                    spinner.setFilters(new InputFilter[]{new InputFilter.LengthFilter(32)});
                     spinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, channels));
                     new AlertDialog.Builder(this)
                             .setTitle(R.string.drawer_join)
@@ -132,6 +137,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
             ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
             EditText name = new EditText(this);
             name.setHint(R.string.input_channel_name);
+            name.setFilters(new InputFilter[]{new InputFilter.LengthFilter(32)});
             new AlertDialog.Builder(this)
                     .setTitle(R.string.drawer_create)
                     .setView(name)
@@ -150,6 +156,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
                         List<String> channels = ((Users)u).users;
                         AutoCompleteTextView spinner = new AutoCompleteTextView(this);
                         spinner.setHint(R.string.input_user_name);
+                        spinner.setFilters(new InputFilter[]{new InputFilter.LengthFilter(32)});
                         spinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, channels));
                         new AlertDialog.Builder(this)
                                 .setTitle(R.string.drawer_pull)
@@ -173,6 +180,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
                         List<String> channels = ((Users)u).users;
                         AutoCompleteTextView spinner = new AutoCompleteTextView(this);
                         spinner.setHint(R.string.input_user_name);
+                        spinner.setFilters(new InputFilter[]{new InputFilter.LengthFilter(32)});
                         spinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, channels));
                         new AlertDialog.Builder(this)
                                 .setTitle(R.string.drawer_kick)
@@ -303,8 +311,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         });
 
         addCommand("settings", (Channel c, String[] args)->{
-            Intent i = new Intent(this, Settings.class);
-            startActivityForResult(i, SETTINGS_REQUEST);
+            startActivityForResult(new Intent(this, Settings.class), SETTINGS_REQUEST);
         });
 
         addCommand("about", (Channel c, String[] args)->{
@@ -321,7 +328,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
             finish();
         });
 
-        final SharedPreferences hasDefaults = getSharedPreferences(PreferenceManager.KEY_HAS_SET_DEFAULT_VALUES, Context.MODE_PRIVATE);
+        SharedPreferences hasDefaults = getSharedPreferences(PreferenceManager.KEY_HAS_SET_DEFAULT_VALUES, Context.MODE_PRIVATE);
         if(!hasDefaults.getBoolean(PreferenceManager.KEY_HAS_SET_DEFAULT_VALUES, false)) {
             PreferenceManager.setDefaultValues(this, R.xml.settings_connection, true);
             PreferenceManager.setDefaultValues(this, R.xml.settings_notification, true);

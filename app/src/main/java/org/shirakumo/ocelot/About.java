@@ -26,6 +26,8 @@ public class About extends DialogFragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_about, container, false);
+        ((TextView)view.findViewById(R.id.about_version)).setText(BuildConfig.VERSION_NAME);
+
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
             ((TextView) view.findViewById(R.id.about_text)).setText(Html.fromHtml(getString(R.string.app_description), Html.FROM_HTML_MODE_COMPACT));
         }else{

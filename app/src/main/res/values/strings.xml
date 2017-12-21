@@ -2,13 +2,16 @@
     <string name="app_name">Ocelot</string>
     <string name="app_service_name">OcelotClient</string>
     <string name="app_description"><![CDATA[
-        <p>Ocelot is an open source Android client for the Lichat chat protocol.</p>
-        <p>You can obtain the source code for Ocelot on <a href="https://github.com/Shirakumo/Ocelot">GitHub</a>.</p>
+        <p>Ocelot is an open source Android client for the Lichat chat protocol.</p><br/>
+        <p>You can obtain the source code for Ocelot on <a href="https://github.com/Shirakumo/Ocelot">GitHub</a>.</p><br/>
         <p>Ocelot and Lichat are &copy; 2017 Shirakumo, <a href="https://shirakumo.org">www.shirakumo.org</a></p>
     ]]></string>
     <string name="button_ok">Ok</string>
     <string name="input_channel_name">Channel name</string>
     <string name="input_user_name">User name</string>
+    <string name="input_password">Password</string>
+    <string name="input_hostname">Server hostname</string>
+    <string name="input_port">Server port</string>
     <string name="service_title">Ocelot</string>
     <string name="service_message">Ocelot is connected.</string>
     <string name="notification_group">Ocelot Notifications</string>
@@ -77,4 +80,10 @@
     <string name="drawer_settings">Settings</string>
     <string name="drawer_quit">Quit</string>
     <string name="drawer_about">About</string>
+    <string name="setup_title">Welcome to Ocelot</string>
+    <string name="setup_userinfo">User information</string>
+    <string name="setup_serverinfo">Server information</string>
+    <string name="setup_autoconnect">Automatically connect on start</string>
+    <string name="setup_complete">Finish</string>
+    <string name="setup_registered">Registered</string>
 </resources>

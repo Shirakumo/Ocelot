@@ -5,6 +5,7 @@
         <EditTextPreference
             android:defaultValue="Ocelot"
             android:key="username"
+            android:maxLength="32"
             android:selectAllOnFocus="true"
             android:singleLine="true"
             android:summary="@string/setting_username_summary"
