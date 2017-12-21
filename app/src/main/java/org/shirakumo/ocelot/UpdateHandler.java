@@ -2,6 +2,7 @@ package org.shirakumo.ocelot;
 
 import org.shirakumo.lichat.HandlerAdapter;
 import org.shirakumo.lichat.Payload;
+import org.shirakumo.lichat.conditions.InvalidUpdateReceived;
 import org.shirakumo.lichat.updates.*;
 
 public class UpdateHandler extends HandlerAdapter {
@@ -48,6 +49,15 @@ public class UpdateHandler extends HandlerAdapter {
     }
 
     public void handle(ConnectionLost update){
-        chat.getChannel(Chat.SYSTEM_CHANNEL).showText(" ** Connection lost");
+        if(update.exception instanceof InvalidUpdateReceived){
+            Object real = ((InvalidUpdateReceived)update.exception).object;
+            if(real instanceof Failure){
+                chat.getChannel(Chat.SYSTEM_CHANNEL).showText(" ** "+((Failure)real).text);
+            }else{
+                chat.getChannel(Chat.SYSTEM_CHANNEL).showText(" ** Received unexpected response of type "+real.getClass().getSimpleName());
+            }
+        }else{
+            chat.getChannel(Chat.SYSTEM_CHANNEL).showText(" ** Connection lost");
+        }
     }
 }
