@@ -43,6 +43,7 @@ public class Service extends android.app.Service implements SharedPreferences.On
     public int reconnectTimeout = 30;
     public int reconnectCounter = 0;
     private int notificationCounter = 0;
+    private boolean foregrounded = false;
     private Chat chat;
     private final List<Update> updates = new ArrayList<>();
 
@@ -92,6 +93,7 @@ public class Service extends android.app.Service implements SharedPreferences.On
     }
 
     public void startForeground() {
+        if(foregrounded) return;
         // Create sticky notification
         Intent notificationIntent = new Intent(this, Chat.class);
         notificationIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -109,7 +111,15 @@ public class Service extends android.app.Service implements SharedPreferences.On
                 .setOngoing(true);
 
         startForeground(SERVICE_NOTIFICATION, builder.build());
+        foregrounded = true;
         Log.d("ocelot.service", "Started foreground");
+    }
+
+    public void stopForeground(){
+        if(!foregrounded) return;
+        stopForeground(true);
+        foregrounded = false;
+        Log.d("ocelot.service", "Stopped foreground");
     }
 
     @Override
@@ -376,7 +386,7 @@ public class Service extends android.app.Service implements SharedPreferences.On
 
         public void handle(Disconnect update){
             Log.d("ocelot.service", "Closed connection.");
-            stopForeground(true);
+            if(chat != null) stopForeground();
         }
 
         public void handle(ConnectionLost update){
