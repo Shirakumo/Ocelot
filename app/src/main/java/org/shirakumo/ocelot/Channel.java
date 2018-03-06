@@ -195,23 +195,6 @@ public class Channel extends Fragment{
         runScripts.clear();
     }
 
-    public String getInput(){
-        if(view != null) {
-            return ((EditText) view.findViewById(R.id.input)).getText().toString();
-        }else{
-            return "";
-        }
-    }
-
-    public void setInput(String text){
-        if(view != null) {
-            EditText input = view.findViewById(R.id.input);
-            input.setText("");
-            input.append(text);
-            input.requestFocus();
-        }
-    }
-
     public String getName(){
         return name;
     }

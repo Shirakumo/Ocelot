@@ -678,7 +678,10 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
 
     @Override
     public void onEmoteChosen(String emote) {
-        channel.setInput(channel.getInput()+":"+emote+":");
+        EditText input = findViewById(R.id.input);
+        int start = Math.max(input.getSelectionStart(), 0);
+        int end = Math.max(input.getSelectionEnd(), 0);
+        input.getText().replace(Math.min(start, end), Math.max(start, end), ":"+emote+":");
     }
 
     public void onInput(String input){
