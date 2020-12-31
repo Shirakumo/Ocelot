@@ -61,7 +61,7 @@ public class Channel extends Fragment{
             builder.append(text, 0, start);
             int end = start+1;
             for(; end<text.length(); end++){
-                if(text.charAt(end) == ':'){
+                if(text.charAt(end) == ':' && start+1<end){
                     String emoteName = text.substring(start+1, end);
                     File emote = listener.getEmotePath(emoteName);
                     if(emote != null){
@@ -117,21 +117,21 @@ public class Channel extends Fragment{
         String username = listener.getUsername();
         if(username == null) return text;
         StringBuilder buf = new StringBuilder();
-        boolean inLink = false;
+        boolean inTag = false;
         int i=0;
         for(; i<text.length()-username.length(); i++){
-            if(!inLink){
+            if(!inTag){
                 CharSequence seq = text.subSequence(i, i+username.length());
                 if(seq.equals(username)){
                     buf.append("<mark>"+seq+"</mark>");
                     i += username.length()-1;
                     continue;
                 }
-                if(text.charAt(i) == '<' && i+1<text.length() && text.charAt(i+1) == 'a'){
-                    inLink = true;
+                if(text.charAt(i) == '<' && i+1<text.length() && text.charAt(i+1) == 'a' || text.charAt(i+1) == 'i'){
+                    inTag = true;
                 }
-            }else if(inLink && text.charAt(i) == '>'){
-                inLink = false;
+            }else if(inTag && text.charAt(i) == '>'){
+                inTag = false;
             }
             buf.append(text.charAt(i));
         }
@@ -140,7 +140,7 @@ public class Channel extends Fragment{
     }
 
     public String renderText(String text){
-        return replaceEmotes(markSelf(linkifyURLs(escapeHTML(text))));
+        return markSelf(replaceEmotes(linkifyURLs(escapeHTML(text))));
     }
 
     public void runScript(String text){
