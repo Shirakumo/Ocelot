@@ -404,10 +404,14 @@ public class Service extends android.app.Service implements SharedPreferences.On
             int timeout = reconnectCounter*reconnectTimeout;
             reconnectCounter++;
             Log.i("ocelot.service", "Reconnecting in "+timeout);
-            CL.sleep(timeout);
-            if(0 < reconnectCounter) {
-                Log.i("ocelot.service", "Attempting reconnect...");
-                try{client.connect();}catch(Exception ex){}
+            if(MAX_RECONNECT_ATTEMPTS <= reconnectCounter) {
+                Log.w("ocelot.service", "Reconnection attempts stopped, maximum reached. Need manual reconnect.");
+            } else if(0 < reconnectCounter) {
+                new android.os.Handler(getMainLooper()).postDelayed(()->{
+                    Log.i("ocelot.service", "Attempting reconnect...");
+                    try{client.connect();}catch(Exception ex){}
+                }, 1000*timeout);
+                CL.sleep(timeout);
             }
         }
     }
