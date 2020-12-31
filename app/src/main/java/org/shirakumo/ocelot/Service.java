@@ -38,6 +38,9 @@ public class Service extends android.app.Service implements SharedPreferences.On
     public static final int UPDATE_NOTIFICATION = 2;
     public static final int ACTION_DISMISS_NOTIFICATION = 1;
     public static final int ACTION_ACCEPT_NOTIFICATION = 2;
+    public static final int MAX_RECONNECT_ATTEMPTS = 10;
+    // FIXME: If we could encode updates on the fly this would not be necessary.
+    public static final int MAX_UPDATE_SIZE = 10 * 1024 * 1024;
 
     public final Client client = new Client();
     public int reconnectTimeout = 30;
@@ -241,6 +244,18 @@ public class Service extends android.app.Service implements SharedPreferences.On
         Log.d("ocelot.service", "Sending file "+file+"...");
         try {
             ContentResolver cr = getContentResolver();
+
+            android.database.Cursor cursor = cr.query(file,null, null, null, null);
+            cursor.moveToFirst();
+            long size = cursor.getLong(cursor.getColumnIndex(android.provider.OpenableColumns.SIZE));
+            cursor.close();
+
+            if(MAX_UPDATE_SIZE < size){
+                Log.e("ocelot.service", "File is too large, refusing to send.");
+                if(chat != null) chat.getChannel().showText("Failed to send the file as it is bigger than "+(MAX_UPDATE_SIZE/1024/1024)+"MB.");
+                return;
+            }
+
             Payload payload = new Payload(Toolkit.getUriFileName(cr, file), cr.getType(file), cr.openInputStream(file));
             client.s("DATA",
                     "channel", channel,
