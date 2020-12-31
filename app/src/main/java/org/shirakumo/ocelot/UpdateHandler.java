@@ -45,7 +45,7 @@ public class UpdateHandler extends HandlerAdapter {
     }
 
     public void handle(Connect update){
-        chat.getChannel(Chat.SYSTEM_CHANNEL).showText(" ** Connection estabilished");
+        chat.getChannel(Chat.SYSTEM_CHANNEL).showText(" ** Connection established");
     }
 
     public void handle(ConnectionLost update){
