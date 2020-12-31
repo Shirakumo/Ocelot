@@ -341,12 +341,6 @@ public class Service extends android.app.Service implements SharedPreferences.On
             super.handle(update);
         }
 
-        public void handle(Join update){
-            if(!update.channel.equals(client.servername) && update.from.equals(client.username)) {
-                client.s("BACKFILL", "channel", update.channel);
-            }
-        }
-
         public void handle(Emote emote){
             Payload payload = client.emotes.get(emote.name);
             if(payload != null){
