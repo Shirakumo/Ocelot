@@ -61,12 +61,18 @@ public class Channel extends Fragment{
             builder.append(text, 0, start);
             int end = start+1;
             for(; end<text.length(); end++){
-                if(text.charAt(end) == ':' && start+1<end){
-                    String emoteName = text.substring(start+1, end);
-                    File emote = listener.getEmotePath(emoteName);
-                    if(emote != null){
-                        builder.append("<img class=\"emote\" src="+Toolkit.prin1("file://"+emote.getAbsolutePath())+">");
-                        start = end+1;
+                if(text.charAt(end) == ':'){
+                    if(start+1<end) {
+                        String emoteName = text.substring(start + 1, end);
+                        Log.d("ocelot.channel", "Found emote " + emoteName);
+                        File emote = listener.getEmotePath(emoteName);
+                        if (emote != null) {
+                            builder.append("<img class=\"emote\" src=" + Toolkit.prin1("file://" + emote.getAbsolutePath()) + ">");
+                            start = end + 1;
+                        } else {
+                            builder.append(text, start, end);
+                            start = end;
+                        }
                     }else{
                         builder.append(text, start, end);
                         start = end;
