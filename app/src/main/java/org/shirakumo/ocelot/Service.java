@@ -217,7 +217,7 @@ public class Service extends android.app.Service implements SharedPreferences.On
     }
 
     public File getEmotePath(String name){
-        Payload payload = client.emotes.get(name);
+        Payload payload = client.emotes.get(name.toLowerCase());
         if(payload != null){
             return new File(new File(getFilesDir(), "emotes/"),
                     payload.name+"."+Toolkit.fileExtensionForMime(payload.contentType));
@@ -342,9 +342,10 @@ public class Service extends android.app.Service implements SharedPreferences.On
         }
 
         public void handle(Emote emote){
-            Payload payload = client.emotes.get(emote.name);
+            String name = emote.name.toLowerCase();
+            Payload payload = client.emotes.get(name);
             if(payload != null){
-                File dest = getEmotePath(emote.name);
+                File dest = getEmotePath(name);
                 try {
                     dest.getParentFile().mkdirs();
                     payload.save(dest.getAbsolutePath());
