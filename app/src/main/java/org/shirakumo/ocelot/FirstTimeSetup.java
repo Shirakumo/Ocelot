@@ -27,8 +27,8 @@ public class FirstTimeSetup extends Activity {
         findViewById(R.id.setup_complete).setOnClickListener((vw)->{
             boolean error = false;
 
-            if(username.getText().length() == 0){
-                username.setError("The username must be between 1 and 32 characters long.");
+            if(32 < username.getText().length()){
+                username.setError("The username must be less than 32 characters long.");
                 error = true;
             }
 
