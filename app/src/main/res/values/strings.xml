@@ -7,6 +7,9 @@
         <p>Ocelot and Lichat are &copy; 2017 Shirakumo, <a href="https://shirakumo.org">www.shirakumo.org</a></p>
     ]]></string>
     <string name="button_ok">Ok</string>
+    <string name="button_send_file">Send file</string>
+    <string name="button_open_emotes">Open emote drawer</string>
+    <string name="input_message">Enter your chat message</string>
     <string name="input_channel_name">Channel name</string>
     <string name="input_user_name">User name</string>
     <string name="input_password">Password</string>

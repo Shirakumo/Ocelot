@@ -95,6 +95,10 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
             return false;
         });
 
+        findViewById(R.id.menu).setOnClickListener((vw)->{
+            ((DrawerLayout)findViewById(R.id.drawer_layout)).openDrawer(Gravity.LEFT);
+        });
+
         findViewById(R.id.send_file).setOnClickListener((vw)->{
             runCommand("upload");
         });
