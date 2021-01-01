@@ -538,6 +538,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     }
 
     public void bind(){
+        startService(serviceIntent);
         if(binder == null) {
             bindService(serviceIntent, serviceConnection, Context.BIND_IMPORTANT);
         }
@@ -553,7 +554,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
 
     @Override
     public Map<String, Payload> getEmotes() {
-        return (binder == null)? null : binder.getClient().emotes;
+        return (binder == null)? new HashMap<String, Payload>() : binder.getClient().emotes;
     }
 
     private Map<Integer, Channel> sendFileRequestMap = new HashMap<>();
@@ -622,7 +623,6 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
             Log.w("ocelot.chat", "Failed to restore channel state.", ex);
         }
 
-        if(binder == null) startService(serviceIntent);
         bind();
     }
 
