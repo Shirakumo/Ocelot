@@ -245,17 +245,17 @@ public class Toolkit {
     }
 
     public static int getColor(SharedPreferences prefs, Resources.Theme theme, String key, int defAttr){
-        int c = prefs.getInt(key, -1);
-        if(c == -1){
+        if(!prefs.contains(key)){
             TypedValue tv = new TypedValue();
             theme.resolveAttribute(defAttr, tv, true);
             if(tv.type >= TypedValue.TYPE_FIRST_COLOR_INT && tv.type <= TypedValue.TYPE_LAST_COLOR_INT){
-                c = tv.data;
+                return tv.data;
             }else{
-                c = 0;
+                return 0;
             }
+        }else {
+            return prefs.getInt(key, 0);
         }
-        return c;
     }
 
     public static String getColorHex(SharedPreferences prefs, Resources.Theme theme, String key, int defAttr){
