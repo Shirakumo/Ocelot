@@ -48,6 +48,7 @@ public class Service extends android.app.Service implements SharedPreferences.On
     private int notificationCounter = 0;
     private boolean foregrounded = false;
     private Chat chat;
+    private android.os.Handler reconnecter;
     private final List<Update> updates = new ArrayList<>();
 
     public Service() {
@@ -88,6 +89,8 @@ public class Service extends android.app.Service implements SharedPreferences.On
                 manager.createNotificationChannel(updates);
             }
         }
+
+        reconnecter = new android.os.Handler(getMainLooper());
 
         getPreferences().registerOnSharedPreferenceChangeListener(this);
         for(String key : new String[]{"notify_sound","notify_vibrate","notify_light","notify_light_color"})
@@ -209,6 +212,7 @@ public class Service extends android.app.Service implements SharedPreferences.On
         if(client.isConnected()){
             client.disconnect();
         }
+        reconnecter.removeCallbacksAndMessages(null);
     }
 
     public File[] getEmotePaths(){
@@ -407,7 +411,7 @@ public class Service extends android.app.Service implements SharedPreferences.On
             if(MAX_RECONNECT_ATTEMPTS <= reconnectCounter) {
                 Log.w("ocelot.service", "Reconnection attempts stopped, maximum reached. Need manual reconnect.");
             } else if(0 < reconnectCounter) {
-                new android.os.Handler(getMainLooper()).postDelayed(()->{
+                reconnecter.postDelayed(()->{
                     Log.i("ocelot.service", "Attempting reconnect...");
                     try{client.connect();}catch(Exception ex){}
                 }, 1000*timeout);
