@@ -76,6 +76,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
 
     @Override
     protected void onCreate(Bundle savedInstanceState){
+        Log.i("ocelot.chat", "Creating "+this);
         setContentView(R.layout.activity_chat);
         super.onCreate(savedInstanceState);
 
@@ -609,7 +610,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
 
     @Override
     protected void onStart() {
-        Log.d("ocelot.chat", "Starting");
+        Log.d("ocelot.chat", "Starting "+this);
         super.onStart();
 
         // Load saved state if available
@@ -627,21 +628,21 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
 
     @Override
     protected void onResume() {
-        Log.d("ocelot.chat", "Resuming");
+        Log.d("ocelot.chat", "Resuming "+this);
         super.onResume();
         bind();
     }
 
     @Override
     protected void onPause() {
-        Log.d("ocelot.chat", "Pausing");
+        Log.d("ocelot.chat", "Pausing "+this);
         super.onPause();
         unbind();
     }
 
     @Override
     protected void onStop() {
-        Log.d("ocelot.chat", "Stopping");
+        Log.d("ocelot.chat", "Stopping "+this);
         super.onStop();
         unbind();
 
@@ -658,8 +659,13 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
 
     @Override
     protected void onDestroy() {
-        Log.d("ocelot.chat", "Destroying");
+        Log.d("ocelot.chat", "Destroying "+this);
         super.onDestroy();
+
+        channel = null;
+        channels.clear();
+        onBindRunnables.clear();
+        channelMenuMap.clear();
         if(killServiceOnDestroy) {
             stopService(serviceIntent);
         }
@@ -721,12 +727,13 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     }
 
     public void handle(Update update){
-        runOnUiThread(()->{
-            if(update instanceof Connect) onConnect();
-            else if(update instanceof Disconnect) onDisconnect();
-            else if(update instanceof ConnectionLost) onDisconnect();
-            handler.handle(update);
-        });
+        if(!isDestroyed())
+            runOnUiThread(()->{
+                if(update instanceof Connect) onConnect();
+                else if(update instanceof Disconnect) onDisconnect();
+                else if(update instanceof ConnectionLost) onDisconnect();
+                handler.handle(update);
+            });
     }
 
     public SharedPreferences getPreferences(){

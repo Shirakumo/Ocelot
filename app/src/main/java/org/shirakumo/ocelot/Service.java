@@ -322,7 +322,7 @@ public class Service extends android.app.Service implements SharedPreferences.On
 
         public Service unbind(){
             if(chat == null) return null;
-            Log.d("ocelot.service", "Unbound from chat.");
+            Log.d("ocelot.service", "Unbound from "+chat);
             client.removeHandler(chat);
             chat = null;
             return null;
