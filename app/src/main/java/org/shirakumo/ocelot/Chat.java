@@ -333,6 +333,31 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
             finish();
         });
 
+        addCommand("topic", (Channel c, String[] args)->{
+            binder.getClient().s("SET-CHANNEL-INFO,
+                    "channel", c.getName(),
+                    "key", CL.kw("TOPIC"),
+                    "text", Toolkit.join(args, " "));
+        });
+
+        addCommand("pause", (Channel c, String[] args)->{
+            binder.getClient().s("PAUSE",
+                    "channel", c.getName(),
+                    "by", Integer.parseInt(args[0]));
+        });
+
+        addCommand("quiet", (Channel c, String[] args)->{
+            binder.getClient().s("QUIET",
+                    "channel", c.getName(),
+                    "target", Toolkit.join(args, " "));
+        });
+
+        addCommand("unquiet", (Channel c, String[] args)->{
+            binder.getClient().s("QUIET",
+                    "channel", c.getName(),
+                    "target", Toolkit.join(args, " "));
+        });
+
         SharedPreferences hasDefaults = getSharedPreferences(PreferenceManager.KEY_HAS_SET_DEFAULT_VALUES, Context.MODE_PRIVATE);
         if(!hasDefaults.getBoolean(PreferenceManager.KEY_HAS_SET_DEFAULT_VALUES, false)) {
             PreferenceManager.setDefaultValues(this, R.xml.settings_connection, true);
