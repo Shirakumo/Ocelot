@@ -1,0 +1,1 @@
+This is a client for the Lichat protocol. It is compatible with version 2 of the protocol, and includes support for most of the Shirakumo extensions, such as data, emotes, and so forth.

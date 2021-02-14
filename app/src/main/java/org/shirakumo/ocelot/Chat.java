@@ -334,9 +334,9 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         });
 
         addCommand("topic", (Channel c, String[] args)->{
-            binder.getClient().s("SET-CHANNEL-INFO,
+            binder.getClient().s("SET-CHANNEL-INFO",
                     "channel", c.getName(),
-                    "key", CL.kw("TOPIC"),
+                    "key", CL.intern("TOPIC", "KEYWORD"),
                     "text", Toolkit.join(args, " "));
         });
 
