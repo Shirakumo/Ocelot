@@ -1,1 +1,2 @@
+include ':jLichat'
 include ':app'
