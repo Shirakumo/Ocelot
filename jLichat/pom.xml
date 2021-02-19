@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.shirakumo</groupId>
+  <artifactId>jLichat</artifactId>
+  <packaging>jar</packaging>
+  <version>1.0.0</version>
+
+  <dependencies>
+  </dependencies>
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <exec.mainClass>org.shirakumo.lichat.Test</exec.mainClass>
+  </properties>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.6.1</version>
+        <configuration>
+          <source>1.8</source>
+          <target>1.8</target>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>1.2.1</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>java</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <mainClass>org.shirakumo.lichat.Test</mainClass>
+          <arguments>
+          </arguments>
+        </configuration>
+      </plugin>
+      <plugin>
+	<groupId>org.apache.maven.plugins</groupId>
+	<artifactId>maven-jar-plugin</artifactId>
+        <version>3.0.2</version>
+	<configuration>
+	  <archive>
+	    <manifest>
+	      <mainClass>org.shirakumo.lichat.Test</mainClass>
+	    </manifest>
+	  </archive>
+	</configuration>
+      </plugin>
+    </plugins>
+  </build>
+  <reporting>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>3.0.0-M1</version>
+        <configuration>
+          <bottom><![CDATA[Copyright 2017, <a href="http://shirakumo.org">Shirakumo<a>.]]></bottom>
+          <show>public</show>
+        </configuration>
+      </plugin>
+    </plugins>
+  </reporting>
+</project>
