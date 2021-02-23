@@ -7,24 +7,25 @@ jobs:
     steps:
       - name: Checkout the code
         uses: actions/checkout@v2
-      - name: Build the app
-        run: ./gradlew build
       - name: Prepare keys
-        run: gpg --quiet --batch --yes --decrpyt --passphrase "$RELEASE_PASSWORD" --output $HOME/shirakumo.jks shirakumo.jks.gpg
+        run: |
+          gpg --quiet --batch --yes --decrypt --passphrase "$RELEASE_PASSWORD" --output $HOME/shirakumo.jks shirakumo.jks.gpg
+          mkdir -p $HOME/.gradle
+          echo "RELEASE_STORE_FILE=$HOME/shirakumo.jks" >> $HOME/.gradle/gradle.properties
+          echo "RELEASE_STORE_PASSWORD=$RELEASE_PASSWORD" >> $HOME/.gradle/gradle.properties
+          echo "RELEASE_KEY_ALIAS=shirakumo" >> $HOME/.gradle/gradle.properties
+          echo "RELEASE_KEY_PASSWORD=$RELEASE_PASSWORD" >> $HOME/.gradle/gradle.properties
         env:
           RELEASE_PASSWORD: ${{ secrets.RELEASE_PASSWORD }}
+      - name: Build the app
+        run: ./gradlew build
       - name: Assemble
         run: ./gradlew assembleRelease
-        env:
-          RELEASE_STORE_FILE: $HOME/shirakumo.jks
-          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_PASSWORD }}
-          RELEASE_KEY_ALIAS: shirakumo
-          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_PASSWORD }}
       - name: Upload artifact
         uses: actions/upload-artifact@v1
         with:
           name: app
-          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          path: app/build/outputs/apk/release/app-release.apk
       - name: Create release
         id: create_release
         uses: actions/create-release@v1
@@ -41,6 +42,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: app/build/outputs/apk/release/app-release-unsigned.apk
+          asset_path: app/build/outputs/apk/release/app-release.apk
           asset_name: ocelot.apk
           asset_content_type: application/vnd.android.package-archive
