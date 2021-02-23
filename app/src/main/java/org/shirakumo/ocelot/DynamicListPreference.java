@@ -85,7 +85,7 @@ public class DynamicListPreference extends DialogPreference {
     protected void onDialogClosed(boolean positiveResult) {
         SharedPreferences.Editor edit = getSharedPreferences().edit();
         edit.putStringSet(getKey(), entries);
-        edit.commit();
+        edit.apply();
     }
 
     @Override

@@ -7,7 +7,6 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
-import android.graphics.Color;
 import android.graphics.Point;
 import android.net.Uri;
 import android.os.Bundle;
@@ -15,26 +14,23 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.ComponentName;
 import android.os.IBinder;
-import android.os.PersistableBundle;
 import android.preference.PreferenceManager;
-import android.support.design.widget.NavigationView;
-import android.support.v4.content.FileProvider;
-import android.support.v4.widget.DrawerLayout;
+import com.google.android.material.navigation.NavigationView;
+import androidx.core.content.FileProvider;
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
 import android.text.InputFilter;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
@@ -97,7 +93,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         });
 
         findViewById(R.id.menu).setOnClickListener((vw)->{
-            ((DrawerLayout)findViewById(R.id.drawer_layout)).openDrawer(Gravity.LEFT);
+            ((DrawerLayout)findViewById(R.id.drawer_layout)).openDrawer(GravityCompat.START);
         });
 
         findViewById(R.id.send_file).setOnClickListener((vw)->{
@@ -112,7 +108,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         Menu menu = ((NavigationView)findViewById(R.id.drawer)).getMenu();
 
         menu.findItem(R.id.drawer_join).setOnMenuItemClickListener((vw)->{
-            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
+            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(GravityCompat.START);
             int id = binder.getClient().nextId();
             binder.getClient().addCallback(id, (u)->
                 runOnUiThread(()->{
@@ -133,13 +129,13 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         });
 
         menu.findItem(R.id.drawer_close).setOnMenuItemClickListener((vw)->{
-            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
+            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(GravityCompat.START);
             runCommand("close");
             return true;
         });
 
         menu.findItem(R.id.drawer_create).setOnMenuItemClickListener((vw)->{
-            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
+            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(GravityCompat.START);
             EditText name = new EditText(this);
             name.setHint(R.string.input_channel_name);
             name.setFilters(new InputFilter[]{new InputFilter.LengthFilter(32)});
@@ -153,7 +149,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         });
 
         menu.findItem(R.id.drawer_pull).setOnMenuItemClickListener((vw)->{
-            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
+            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(GravityCompat.START);
             int id = binder.getClient().nextId();
             String channel = this.channel.getName();
             binder.getClient().addCallback(id, (u)->
@@ -177,7 +173,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         });
 
         menu.findItem(R.id.drawer_kick).setOnMenuItemClickListener((vw)->{
-            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
+            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(GravityCompat.START);
             int id = binder.getClient().nextId();
             String channel = this.channel.getName();
             binder.getClient().addCallback(id, (u)->
@@ -201,7 +197,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         });
 
         menu.findItem(R.id.drawer_connect).setOnMenuItemClickListener((vw)->{
-            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
+            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(GravityCompat.START);
             if(binder.getClient().isConnected())
                 runCommand("disconnect");
             else
@@ -210,19 +206,19 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         });
 
         menu.findItem(R.id.drawer_settings).setOnMenuItemClickListener((vw)->{
-            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
+            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(GravityCompat.START);
             runCommand("settings");
             return true;
         });
 
         menu.findItem(R.id.drawer_about).setOnMenuItemClickListener((vw)->{
-            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
+            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(GravityCompat.START);
             runCommand("about");
             return true;
         });
 
         menu.findItem(R.id.drawer_quit).setOnMenuItemClickListener((vw)->{
-            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
+            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(GravityCompat.START);
             runCommand("quit");
             return true;
         });
@@ -399,7 +395,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         NavigationView view = findViewById(R.id.drawer);
         Menu menu = view.getMenu().findItem(R.id.drawer_channels).getSubMenu();
         menu.add(R.id.drawer_channels_group, id, Menu.NONE, channel.getName()).setOnMenuItemClickListener((vw)->{
-            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(Gravity.LEFT);
+            ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(GravityCompat.START);
             showChannel(channel);
             return true;
         }).setCheckable(true);

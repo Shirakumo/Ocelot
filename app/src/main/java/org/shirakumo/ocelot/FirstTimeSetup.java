@@ -50,7 +50,7 @@ public class FirstTimeSetup extends Activity {
                         .putString("hostname", hostname.getText().toString())
                         .putString("port", port.getText().toString())
                         .putBoolean("autoconnect", ((Switch) findViewById(R.id.setup_autoconnect)).isChecked())
-                        .commit();
+                        .apply();
                 finish();
             }
         });

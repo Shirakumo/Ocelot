@@ -9,9 +9,9 @@
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
         <option name="modules">
           <set>
-            <option value="/run/media/data/Projects/java/Ocelot" />
-            <option value="/run/media/data/Projects/java/Ocelot/app" />
-            <option value="/run/media/data/Projects/java/Ocelot/jLichat" />
+            <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/app" />
+            <option value="$PROJECT_DIR$/jLichat" />
           </set>
         </option>
         <option name="resolveModulePerSourceSet" value="false" />
