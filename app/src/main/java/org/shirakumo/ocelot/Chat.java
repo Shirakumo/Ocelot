@@ -115,6 +115,9 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
                     List<String> channels = ((Channels)u).channels;
                     AutoCompleteTextView spinner = new AutoCompleteTextView(this);
                     spinner.setHint(R.string.input_channel_name);
+                    spinner.setSingleLine();
+                    spinner.setMaxLines(1);
+                    spinner.setImeOptions(EditorInfo.IME_ACTION_GO);
                     spinner.setFilters(new InputFilter[]{new InputFilter.LengthFilter(32)});
                     spinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, channels));
                     new AlertDialog.Builder(this)
@@ -138,6 +141,9 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
             ((DrawerLayout)findViewById(R.id.drawer_layout)).closeDrawer(GravityCompat.START);
             EditText name = new EditText(this);
             name.setHint(R.string.input_channel_name);
+            name.setSingleLine();
+            name.setMaxLines(1);
+            name.setImeOptions(EditorInfo.IME_ACTION_GO);
             name.setFilters(new InputFilter[]{new InputFilter.LengthFilter(32)});
             new AlertDialog.Builder(this)
                     .setTitle(R.string.drawer_create)
@@ -157,6 +163,9 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
                         List<String> channels = ((Users)u).users;
                         AutoCompleteTextView spinner = new AutoCompleteTextView(this);
                         spinner.setHint(R.string.input_user_name);
+                        spinner.setSingleLine();
+                        spinner.setMaxLines(1);
+                        spinner.setImeOptions(EditorInfo.IME_ACTION_GO);
                         spinner.setFilters(new InputFilter[]{new InputFilter.LengthFilter(32)});
                         spinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, channels));
                         new AlertDialog.Builder(this)
@@ -181,6 +190,9 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
                         List<String> channels = ((Users)u).users;
                         AutoCompleteTextView spinner = new AutoCompleteTextView(this);
                         spinner.setHint(R.string.input_user_name);
+                        spinner.setSingleLine();
+                        spinner.setMaxLines(1);
+                        spinner.setImeOptions(EditorInfo.IME_ACTION_GO);
                         spinner.setFilters(new InputFilter[]{new InputFilter.LengthFilter(32)});
                         spinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, channels));
                         new AlertDialog.Builder(this)

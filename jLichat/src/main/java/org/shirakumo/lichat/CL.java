@@ -11,6 +11,8 @@ public class CL{
     private static final Map<Symbol, Class<? extends StandardObject>> classes;
     private static final Map<Class<? extends StandardObject>, Symbol> classNames;
     public static Package PACKAGE;
+    public static final Symbol T;
+    public static final Symbol NIL;
 
     static{
         packages = new HashMap<String, Package>();
@@ -26,6 +28,8 @@ public class CL{
         for(String name : new String[]{"NIL","T", "AND", "OR", "NOT", "+", "-"}){
             intern(name, "LICHAT-PROTOCOL");
         }
+        T = intern("T", "LICHAT-PROTOCOL");
+        NIL = intern("NIL", "LICHAT-PROTOCOL");
 
         // Java doesn't execute the static blocks in the classes, so they
         // can't register themselves. THANKS A LOT, IDIOTS

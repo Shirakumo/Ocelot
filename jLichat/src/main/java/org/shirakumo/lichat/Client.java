@@ -220,7 +220,7 @@ public class Client extends HandlerAdapter implements Runnable{
             if(availableExtensions.contains("shirakumo-backfill"))
                 s("BACKFILL", "channel", update.channel);
             if(availableExtensions.contains("shirakumo-channel-info"))
-                s("CHANNEL-INFO", "channel", update.channel, "keys", CL.intern("T"));
+                s("CHANNEL-INFO", "channel", update.channel, "keys", CL.T);
         }
     }
 

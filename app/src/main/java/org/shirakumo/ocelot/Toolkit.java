@@ -31,7 +31,7 @@ public class Toolkit {
             if(!e.hasNext()) return "";
             e.next();
         }
-        for(int i=from; i<to; i++){
+        for(int i=from; e.hasNext() && i<to; i++){
             build.append(e.next());
             if(e.hasNext()) build.append(delim);
             else break;

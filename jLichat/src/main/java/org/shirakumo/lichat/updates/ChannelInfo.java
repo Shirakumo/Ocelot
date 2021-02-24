@@ -9,13 +9,15 @@ public class ChannelInfo extends ChannelUpdate{
         CL.registerClass(className, ChannelInfo.class);
     }
 
-    public final List<Symbol> keys = new ArrayList<Symbol>();
+    public final Object keys;
 
     public ChannelInfo(Map<String, Object> initargs){
         super(initargs);
         if(initargs.get("keys") instanceof Symbol)
-            keys.add(CL.intern("T"));
-        else
-            keys.addAll((List<Symbol>)initargs.get("keys"));
+            keys = initargs.get("keys");
+        else {
+            keys = new ArrayList<Symbol>();
+            ((ArrayList<Symbol>)keys).addAll((List<Symbol>) initargs.get("keys"));
+        }
     }
 }
