@@ -106,7 +106,7 @@ public class Channel extends Fragment{
         });
     }
 
-    private static Pattern escapePattern = Pattern.compile("&([<>\"&\\n]);");
+    private static Pattern escapePattern = Pattern.compile("&([<>\"&]);");
     public String escapeHTML(String text){
         return Toolkit.replaceAll(text, escapePattern, (String match, String[] groups)->{
             String attr = groups[0];
@@ -114,8 +114,14 @@ public class Channel extends Fragment{
             if(attr.equals(">")) return "&gt;";
             if(attr.equals("\"")) return "&quot;";
             if(attr.equals("&")) return "&amp;";
-            if(attr.equals("\n")) return "<br>";
             return match;
+        });
+    }
+
+    private static Pattern newlinePattern = Pattern.compile("(?s)\n");
+    public String replaceNewlines(String text){
+        return Toolkit.replaceAll(text, newlinePattern, (String match, String[] groups)->{
+            return "<br>";
         });
     }
 
@@ -146,7 +152,7 @@ public class Channel extends Fragment{
     }
 
     public String renderText(String text){
-        return markSelf(replaceEmotes(linkifyURLs(escapeHTML(text))));
+        return replaceNewlines(markSelf(replaceEmotes(linkifyURLs(escapeHTML(text)))));
     }
 
     public void runScript(String text){
