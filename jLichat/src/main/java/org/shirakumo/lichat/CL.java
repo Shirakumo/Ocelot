@@ -66,8 +66,10 @@ public class CL{
         registerClass(intern("MALFORMED-UPDATE"), MalformedUpdate.class);
         registerClass(intern("MESSAGE"), Message.class);
         registerClass(intern("NO-SUCH-CHANNEL"), NoSuchChannel.class);
+        registerClass(intern("NO-SUCH-CHANNEL-INFO"), NoSuchChannelInfo.class);
         registerClass(intern("NO-SUCH-PROFILE"), NoSuchProfile.class);
         registerClass(intern("NO-SUCH-USER"), NoSuchUser.class);
+        registerClass(intern("NO-SUCH-USER-INFO"), NoSuchUserInfo.class);
         registerClass(intern("NOT-IN-CHANNEL"), NotInChannel.class);
         registerClass(intern("PAUSE"), Pause.class);
         registerClass(intern("PERMISSIONS"), Permissions.class);
@@ -78,6 +80,7 @@ public class CL{
         registerClass(intern("REGISTER"), Register.class);
         registerClass(intern("SERVER-INFO"), ServerInfo.class);
         registerClass(intern("SET-CHANNEL-INFO"), SetChannelInfo.class);
+        registerClass(intern("SET-USER-INFO"), SetUserInfo.class);
         registerClass(intern("TARGET-UPDATE"), TargetUpdate.class);
         registerClass(intern("TEXT-UPDATE"), TextUpdate.class);
         registerClass(intern("TOO-MANY-CONNECTIONS"), TooManyConnections.class);
