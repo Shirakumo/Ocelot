@@ -1,6 +1,7 @@
 package org.shirakumo.ocelot;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.view.View;
@@ -51,6 +52,15 @@ public class FirstTimeSetup extends Activity {
                         .putString("port", port.getText().toString())
                         .putBoolean("autoconnect", ((Switch) findViewById(R.id.setup_autoconnect)).isChecked())
                         .apply();
+
+                Intent intent = new Intent();
+                intent.setAction("android.settings.APP_NOTIFICATION_SETTINGS");
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                intent.putExtra("app_package", getBaseContext().getPackageName());
+                intent.putExtra("app_uid", getBaseContext().getApplicationInfo().uid);
+                intent.putExtra("android.provider.extra.APP_PACKAGE", getBaseContext().getPackageName());
+                getBaseContext().startActivity(intent);
+
                 finish();
             }
         });
