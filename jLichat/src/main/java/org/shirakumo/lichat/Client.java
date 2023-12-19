@@ -214,7 +214,7 @@ public class Client extends HandlerAdapter implements Runnable{
     }
 
     public void handle(Join update){
-        if(update.from.equals(username) && !update.channel.equals(servername)){
+        if(isSelf(update.from) && !isPrimaryChannel(update.from)){
             if(!channels.contains(update.channel))
                 channels.add(update.channel);
             if(availableExtensions.contains("shirakumo-backfill"))
@@ -225,7 +225,7 @@ public class Client extends HandlerAdapter implements Runnable{
     }
 
     public void handle(Leave update){
-        if(update.from.equals(username)){
+        if(isSelf(update.from)){
             channels.remove(update.channel);
         }
     }
@@ -255,5 +255,13 @@ public class Client extends HandlerAdapter implements Runnable{
 
     public Handler[] listHandlers(){
         return handlers.toArray(new Handler[0]);
+    }
+
+    public boolean isPrimaryChannel(String channel){
+        return channel.equalsIgnoreCase(servername);
+    }
+
+    public boolean isSelf(String user){
+        return user.equalsIgnoreCase(username);
     }
 }
