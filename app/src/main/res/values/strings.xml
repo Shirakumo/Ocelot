@@ -40,6 +40,8 @@
     <string name="setting_notification_summary">How and when to display notifications</string>
     <string name="setting_notifications">Show Notifications</string>
     <string name="setting_notifications_summary"></string>
+    <string name="setting_notify_system">System Notifications</string>
+    <string name="setting_notify_system_summary">Go to system notification settings</string>
     <string name="setting_notify_message">Notify on message</string>
     <string name="setting_notify_message_summary">Show a notification on every message</string>
     <string name="setting_notify_mention">Notify on mention</string>

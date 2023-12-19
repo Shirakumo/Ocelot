@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
     <PreferenceCategory android:title="@string/setting_notification">
-
+        <Preference
+            android:key="system_notifications"
+            android:title="@string/setting_notify_system"
+            android:summary="@string/setting_notify_system_summary" />
         <SwitchPreference
             android:defaultValue="true"
             android:key="notifications"
