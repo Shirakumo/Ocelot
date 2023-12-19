@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/ocelot.iml" filepath="$PROJECT_DIR$/.idea/ocelot.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/ocelot.app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/ocelot.app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/ocelot.app.androidTest.iml" filepath="$PROJECT_DIR$/.idea/modules/app/ocelot.app.androidTest.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/ocelot.app.main.iml" filepath="$PROJECT_DIR$/.idea/modules/app/ocelot.app.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/ocelot.app.unitTest.iml" filepath="$PROJECT_DIR$/.idea/modules/app/ocelot.app.unitTest.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/jLichat/ocelot.jLichat.iml" filepath="$PROJECT_DIR$/.idea/modules/jLichat/ocelot.jLichat.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/jLichat/ocelot.jLichat.androidTest.iml" filepath="$PROJECT_DIR$/.idea/modules/jLichat/ocelot.jLichat.androidTest.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/jLichat/ocelot.jLichat.main.iml" filepath="$PROJECT_DIR$/.idea/modules/jLichat/ocelot.jLichat.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/jLichat/ocelot.jLichat.unitTest.iml" filepath="$PROJECT_DIR$/.idea/modules/jLichat/ocelot.jLichat.unitTest.iml" />
+    </modules>
+  </component>
+</project>

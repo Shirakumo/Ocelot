@@ -103,7 +103,7 @@ public class Service extends android.app.Service implements SharedPreferences.On
         // Create sticky notification
         Intent notificationIntent = new Intent(this, Chat.class);
         notificationIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE);
 
         Notification.Builder builder = new Notification.Builder(this);;
 
@@ -161,12 +161,14 @@ public class Service extends android.app.Service implements SharedPreferences.On
 
         Intent deleteIntent = new Intent(this, Service.class);
         deleteIntent.putExtra("action", ACTION_DISMISS_NOTIFICATION);
-        PendingIntent pendingDelete = PendingIntent.getService(this, 0, deleteIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        PendingIntent pendingDelete = PendingIntent.getService(this, 0, deleteIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         Intent acceptIntent = new Intent(this, Service.class);
         acceptIntent.putExtra("action", ACTION_ACCEPT_NOTIFICATION);
         acceptIntent.putExtra("channel", channel);
-        PendingIntent pendingAccept = PendingIntent.getService(this, 0, acceptIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        PendingIntent pendingAccept = PendingIntent.getService(this, 0, acceptIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         Notification.Builder builder = new Notification.Builder(this);
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -251,7 +253,14 @@ public class Service extends android.app.Service implements SharedPreferences.On
 
             android.database.Cursor cursor = cr.query(file,null, null, null, null);
             cursor.moveToFirst();
-            long size = cursor.getLong(cursor.getColumnIndex(android.provider.OpenableColumns.SIZE));
+            int index = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE);
+            if(index < 0){
+                Log.e("ocelot.service", "No file selected.");
+                if(chat != null) chat.getChannel().showText("No file selected.");
+                return;
+            }
+
+            long size = cursor.getLong(index);
             cursor.close();
 
             if(MAX_UPDATE_SIZE < size){
