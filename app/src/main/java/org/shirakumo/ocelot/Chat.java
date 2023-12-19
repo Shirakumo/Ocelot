@@ -16,6 +16,8 @@ import android.content.ComponentName;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
 import com.google.android.material.navigation.NavigationView;
+
+import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
@@ -39,8 +41,10 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.shirakumo.lichat.CL;
 import org.shirakumo.lichat.Handler;
@@ -52,6 +56,7 @@ import org.shirakumo.lichat.updates.Disconnect;
 import org.shirakumo.lichat.updates.Failure;
 import org.shirakumo.lichat.updates.Leave;
 import org.shirakumo.lichat.updates.NoSuchChannel;
+import org.shirakumo.lichat.updates.NotInChannel;
 import org.shirakumo.lichat.updates.Update;
 import org.shirakumo.lichat.updates.Users;
 
@@ -59,7 +64,6 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     public static final String SYSTEM_CHANNEL = "@System";
     private static final int SETTINGS_REQUEST = 1;
 
-    private Intent serviceIntent;
     private UpdateHandler handler = new UpdateHandler(this);
     private HashMap<String, Channel> channels = new HashMap<>();
     private HashMap<String, Command> commands = new HashMap<>();
@@ -76,7 +80,6 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         setContentView(R.layout.activity_chat);
         super.onCreate(savedInstanceState);
 
-        serviceIntent = new Intent(this, Service.class);
         channelCacheDir().mkdirs();
 
         if(!getPreferences().getBoolean("setup", false))
@@ -235,6 +238,12 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
             return true;
         });
 
+        addCommand("send", (Channel c, String[] args)->{
+           binder.getClient().s("MESSAGE",
+                   "channel", args[1],
+                   "text", Toolkit.join(args, " ", 2));
+        });
+
         addCommand("join", (Channel c, String[] args)->{
             String name = Toolkit.join(args, " ", 1);
             binder.getClient().s("JOIN",
@@ -262,7 +271,8 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         addCommand("close", (Channel c, String[] args)->{
             int id = binder.getClient().nextId();
             binder.getClient().addCallback(id, (Update u)->{
-                if(u instanceof Leave || u instanceof NoSuchChannel) removeChannel(c);
+                if(u instanceof Leave || u instanceof NoSuchChannel || u instanceof NotInChannel)
+                    removeChannel(c);
             });
             binder.getClient().s("LEAVE","channel", c.getName(), "id", id);
         });
@@ -300,8 +310,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         });
 
         addCommand("emotes", (Channel c, String[] args)->{
-            FragmentTransaction ft = getFragmentManager().beginTransaction();
-            EmoteList.newInstance().show(ft, "emotes");
+            EmoteList.newInstance().show(getFragmentManager(), "emotes");
         });
 
         addCommand("upload", (Channel c, String[] args)->{
@@ -328,8 +337,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         });
 
         addCommand("about", (Channel c, String[] args)->{
-            FragmentTransaction ft = getFragmentManager().beginTransaction();
-            About.newInstance().show(ft, "about");
+            About.newInstance().show(getFragmentManager(), "about");
         });
 
         addCommand("clear", (Channel c, String[] args)->{
@@ -459,6 +467,12 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         return channels.get(name);
     }
 
+    public Set<String> listChannels(){
+        Set<String> names = new HashSet<String>(channels.keySet());
+        names.remove(SYSTEM_CHANNEL);
+        return names;
+    }
+
     public Channel showChannel(Channel toShow){
         FragmentTransaction ft = getFragmentManager().beginTransaction();
         LinearLayout tabs = (LinearLayout)findViewById(R.id.tabs);
@@ -571,7 +585,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
     }
 
     public void bind(){
-        startService(serviceIntent);
+        Intent serviceIntent = Service.startForeground(this);
         if(binder == null) {
             bindService(serviceIntent, serviceConnection, Context.BIND_IMPORTANT);
         }
@@ -700,7 +714,7 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         onBindRunnables.clear();
         channelMenuMap.clear();
         if(killServiceOnDestroy) {
-            stopService(serviceIntent);
+            Service.stopForeground(this);
         }
     }
 
@@ -733,9 +747,14 @@ public class Chat extends Activity implements Channel.ChannelListener, EmoteList
         if(input.startsWith("/")){
             runCommand(input.substring(1).split(" +"));
         }else{
-            binder.getClient().s("MESSAGE",
-                    "channel", channel.getName(),
-                    "text", input);
+            String chan = channel.getName();
+            binder.getClient().s("MESSAGE", "channel", chan, "text", input)
+                    .onResponse((Update update)->{
+                        if(update instanceof NotInChannel) {
+                            runCommand("join", chan);
+                            runCommand("send", chan, input);
+                        }
+                    });
         }
     }
 

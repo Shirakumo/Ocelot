@@ -3,9 +3,11 @@ package org.shirakumo.ocelot;
 import android.app.NotificationChannel;
 import android.app.NotificationChannelGroup;
 import android.content.ContentResolver;
+import android.content.Context;
 import android.content.Intent;
 import android.app.PendingIntent;
 import android.content.SharedPreferences;
+import android.content.pm.ServiceInfo;
 import android.media.AudioAttributes;
 import android.net.Uri;
 import android.os.Build;
@@ -15,10 +17,12 @@ import android.app.NotificationManager;
 import android.preference.PreferenceManager;
 import android.util.Log;
 
+import androidx.core.app.ServiceCompat;
+import androidx.core.content.ContextCompat;
+
 import org.shirakumo.lichat.Base64;
 import org.shirakumo.lichat.CL;
 import org.shirakumo.lichat.Client;
-import org.shirakumo.lichat.Handler;
 import org.shirakumo.lichat.HandlerAdapter;
 import org.shirakumo.lichat.Payload;
 import org.shirakumo.lichat.updates.*;
@@ -27,8 +31,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 public class Service extends android.app.Service implements SharedPreferences.OnSharedPreferenceChangeListener{
     public static final String CHANNEL_GROUP = "ocelot-notifications";
@@ -38,6 +42,10 @@ public class Service extends android.app.Service implements SharedPreferences.On
     public static final int UPDATE_NOTIFICATION = 2;
     public static final int ACTION_DISMISS_NOTIFICATION = 1;
     public static final int ACTION_ACCEPT_NOTIFICATION = 2;
+    public static final int ACTION_START_SERVICE = 3;
+    public static final int ACTION_STOP_SERVICE = 4;
+    public static final int ACTION_CONNECT = 5;
+    public static final int ACTION_DISCONNECT = 6;
     public static final int MAX_RECONNECT_ATTEMPTS = 10;
     // FIXME: If we could encode updates on the fly this would not be necessary.
     public static final int MAX_UPDATE_SIZE = 10 * 1024 * 1024;
@@ -47,6 +55,7 @@ public class Service extends android.app.Service implements SharedPreferences.On
     public int reconnectCounter = 0;
     private int notificationCounter = 0;
     private boolean foregrounded = false;
+    private boolean connecting = false;
     private Chat chat;
     private android.os.Handler reconnecter;
     private final List<Update> updates = new ArrayList<>();
@@ -98,14 +107,12 @@ public class Service extends android.app.Service implements SharedPreferences.On
         Log.d("ocelot.service", "Created");
     }
 
-    public void startForeground() {
+    private void startForeground() {
         if(foregrounded) return;
-        // Create sticky notification
-        Intent notificationIntent = new Intent(this, Chat.class);
-        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE);
-
-        Notification.Builder builder = new Notification.Builder(this);;
+        Intent intent = new Intent(this, Service.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
+        Notification.Builder builder = new Notification.Builder(this);
 
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             builder.setChannelId(SERVICE_CHANNEL);
@@ -114,23 +121,66 @@ public class Service extends android.app.Service implements SharedPreferences.On
                 .setContentText(getText(R.string.service_message))
                 .setSmallIcon(R.drawable.ic_ocelot)
                 .setContentIntent(pendingIntent)
+                .setPriority(Notification.PRIORITY_LOW)
                 .setOngoing(true);
 
-        startForeground(SERVICE_NOTIFICATION, builder.build());
+        // Button to disconnect
+        Intent disconnectIntent = new Intent(this, Service.class);
+        disconnectIntent.putExtra("action", ACTION_STOP_SERVICE);
+        PendingIntent pendingDisconnect = PendingIntent.getService(this, 0, disconnectIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        Notification.Action.Builder abuilder = new Notification.Action.Builder(R.drawable.ic_close_black_24dp,
+                getApplicationContext().getString(R.string.drawer_disconnect),
+                pendingDisconnect);
+        builder.addAction(abuilder.build());
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(SERVICE_NOTIFICATION, builder.build(), ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING);
+        }else{
+            startForeground(SERVICE_NOTIFICATION, builder.build());
+        }
         foregrounded = true;
         Log.d("ocelot.service", "Started foreground");
     }
 
-    public void stopForeground(){
+    private void stopForeground(){
         if(!foregrounded) return;
         stopForeground(true);
         foregrounded = false;
         Log.d("ocelot.service", "Stopped foreground");
     }
 
+    public static Intent startForeground(Context ctx){
+        Intent serviceIntent = new Intent(ctx, Service.class);
+        serviceIntent.putExtra("action", ACTION_START_SERVICE);
+        ContextCompat.startForegroundService(ctx, serviceIntent);
+        return serviceIntent;
+    }
+
+    public static Intent stopForeground(Context ctx){
+        Intent serviceIntent = new Intent(ctx, Service.class);
+        serviceIntent.putExtra("action", ACTION_STOP_SERVICE);
+        ContextCompat.startForegroundService(ctx, serviceIntent);
+        return serviceIntent;
+    }
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        Log.d("ocelot.service", "Got start command: "+intent.getIntExtra("action", -1));
         switch(intent.getIntExtra("action", -1)) {
+            case ACTION_START_SERVICE:
+                startForeground();
+                break;
+            case ACTION_STOP_SERVICE:
+                disconnect();
+                stopForeground();
+                break;
+            case ACTION_CONNECT:
+                connect();
+                break;
+            case ACTION_DISCONNECT:
+                disconnect();
+                break;
             case ACTION_DISMISS_NOTIFICATION:
                 notificationCounter = 0;
                 break;
@@ -151,7 +201,8 @@ public class Service extends android.app.Service implements SharedPreferences.On
     @Override
     public void onDestroy(){
         getPreferences().unregisterOnSharedPreferenceChangeListener(this);
-        try{((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).cancelAll();}catch(Exception ex){}
+        try{((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).cancelAll();}
+        catch(Exception ex){Log.d("ocelot.service","Failed to cancel service: "+ex);}
         disconnect();
         clearCache();
     }
@@ -198,15 +249,22 @@ public class Service extends android.app.Service implements SharedPreferences.On
     }
 
     public void connect(){
-        if(!client.isConnected()) {
-            SharedPreferences prefs = getPreferences();
-            client.username = prefs.getString("username", "Ocelot");
-            client.password = prefs.getString("password", "");
-            if(client.password.isEmpty()) client.password = null;
-            client.hostname = prefs.getString("hostname", "chat.tymoon.eu");
-            client.port = Integer.parseInt(prefs.getString("port", "1111"));
-            client.connect();
-            Log.d("ocelot.service", "Connecting to "+client.username+"/"+client.password+"@"+client.hostname+":"+client.port);
+        if(!client.isConnected() && !connecting) {
+            boolean successful = false;
+            try {
+                connecting = true;
+                SharedPreferences prefs = getPreferences();
+                client.username = prefs.getString("username", "Ocelot");
+                client.password = prefs.getString("password", "");
+                if (client.password.isEmpty()) client.password = null;
+                client.hostname = prefs.getString("hostname", "chat.tymoon.eu");
+                client.port = Integer.parseInt(prefs.getString("port", "1111"));
+                client.connect();
+                Log.d("ocelot.service", "Connecting to " + client.username + "/" + client.password + "@" + client.hostname + ":" + client.port);
+                successful = true;
+            }finally{
+                if(!successful) connecting = false;
+            }
         }
     }
 
@@ -215,6 +273,7 @@ public class Service extends android.app.Service implements SharedPreferences.On
             client.disconnect();
         }
         reconnecter.removeCallbacksAndMessages(null);
+        connecting = false;
     }
 
     public File[] getEmotePaths(){
@@ -387,8 +446,8 @@ public class Service extends android.app.Service implements SharedPreferences.On
 
         public void handle(Message update){
             SharedPreferences prefs = getPreferences();
-            if(!update.from.equals(client.username)
-                    && (chat == null || !update.channel.equals(chat.getChannel().getName()))
+            if(!client.isSelf(update)
+                    && (chat == null || !update.channel.equalsIgnoreCase(chat.getChannel().getName()))
                     && (prefs.getBoolean("notifications", true)
                      && prefs.getBoolean("notify_message", false)
                      || (prefs.getBoolean("notify_mention", true)
@@ -401,15 +460,17 @@ public class Service extends android.app.Service implements SharedPreferences.On
             Log.d("ocelot.service", "Connection established.");
             reconnectCounter = 0;
             SharedPreferences prefs = getPreferences();
-            for(String channel : prefs.getStringSet("channels", new HashSet<>())){
+            Set<String> toJoin = new HashSet<String>();
+            toJoin.addAll(chat.listChannels());
+            toJoin.addAll(prefs.getStringSet("channels", new HashSet<String>()));
+            for(String channel : toJoin){
                 client.s("JOIN", "channel", channel);
             }
-            startForeground();
+            connecting = false;
         }
 
         public void handle(Disconnect update){
             Log.d("ocelot.service", "Closed connection.");
-            if(chat != null) stopForeground();
         }
 
         public void handle(ConnectionLost update){
@@ -422,7 +483,9 @@ public class Service extends android.app.Service implements SharedPreferences.On
             } else if(0 < reconnectCounter) {
                 reconnecter.postDelayed(()->{
                     Log.i("ocelot.service", "Attempting reconnect...");
-                    try{client.connect();}catch(Exception ex){}
+                    try{client.connect();}catch(Exception ex){
+                        Log.d("ocelot.service", "Reconnect failed: "+ex);
+                    }
                 }, 1000*timeout);
                 CL.sleep(timeout);
             }
