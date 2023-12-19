@@ -12,6 +12,7 @@ public class Update extends StandardObject{
     public final long clock;
     public final Object id;
     public String from;
+    private Client client;
 
     public Update(Map<String, Object> initargs){
         super(initargs);
@@ -22,5 +23,14 @@ public class Update extends StandardObject{
 
     public String toString(){
         return "#<"+className+" FROM "+from+" ID "+id+">";
+    }
+
+    public Update onResponse(Handler handler){
+        client.addCallback((Integer)id, handler);
+        return this;
+    }
+
+    public void setClient(Client client) {
+        this.client = client;
     }
 }

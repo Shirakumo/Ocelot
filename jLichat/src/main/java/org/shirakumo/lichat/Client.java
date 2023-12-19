@@ -117,7 +117,9 @@ public class Client extends HandlerAdapter implements Runnable{
 
         Symbol name = CL.findSymbol(className);
         if(name == null) throw new NoSuchClass(CL.makeSymbol(className));
-        return (Update)CL.makeInstance(CL.findClass(name), argmap);
+        Update update = (Update)CL.makeInstance(CL.findClass(name), argmap);
+        update.setClient(this);
+        return update;
     }
     
     public int nextId(){
@@ -184,6 +186,7 @@ public class Client extends HandlerAdapter implements Runnable{
 
     // FIXME: Some kind of way to notify of exceptions that we just ignore in here.
     public void process(Update update){
+        update.setClient(this);
         int id = -1;
         if(update.id instanceof Integer) id = (Integer)update.id;
         if(update.id instanceof Long) id = (int)((long)((Long)update.id));
@@ -261,7 +264,15 @@ public class Client extends HandlerAdapter implements Runnable{
         return channel.equalsIgnoreCase(servername);
     }
 
+    public boolean isPrimaryChannel(ChannelUpdate update){
+        return isPrimaryChannel(update.channel);
+    }
+
     public boolean isSelf(String user){
         return user.equalsIgnoreCase(username);
+    }
+
+    public boolean isSelf(Update update){
+        return isSelf(update.from);
     }
 }

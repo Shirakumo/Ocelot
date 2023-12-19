@@ -189,7 +189,8 @@ public class CL{
     public static List<String> classSlots(Class<? extends StandardObject> clas){
         List<String> slots = new ArrayList<String>();
         for(java.lang.reflect.Field field : clas.getFields()){
-            if(!java.lang.reflect.Modifier.isStatic(field.getModifiers()))
+            if(!java.lang.reflect.Modifier.isStatic(field.getModifiers())
+                    && !java.lang.reflect.Modifier.isPrivate(field.getModifiers()))
                 slots.add(field.getName());
         }
         return slots;
