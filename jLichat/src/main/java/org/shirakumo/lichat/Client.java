@@ -62,34 +62,41 @@ public class Client extends HandlerAdapter implements Runnable{
 
         lastReceived = CL.getUniversalTime();
         try{s("DISCONNECT");}catch(Exception ex){}
+        if(thread == Thread.currentThread())
+            throw new ExitException();
+        else cleanup();
     }
 
     private void cleanup(){
-        while(sendQueue.poll() != null);
+        boolean cleanupInThread = thread == Thread.currentThread();
+
+        if(cleanupInThread)
+            try{processSendQueue();}catch(Exception ignore){}
+        else
+            while(sendQueue.poll() != null){Thread.yield();}
+
         channels.clear();
         availableExtensions.clear();
         servername = null;
 
-        if(thread != null){
-            thread.interrupt();
-            try{thread.join(1000);}catch(Exception ex){}
+        if(thread != null && !cleanupInThread){
+            Thread clientThread = thread;
             thread = null;
+            clientThread.interrupt();
+            try{clientThread.join(1000);}catch(Exception ignore){}
         }
 
-        if(reader != null){
+        if(reader != null)
             reader.close();
-            reader = null;
-        }
+        reader = null;
 
-        if(printer != null){
+        if(printer != null)
             printer.close();
-            printer = null;
-        }
+        printer = null;
 
-        if(socket != null){
-            try{socket.close();}catch(IOException ex){}
-            socket = null;
-        }
+        if(socket != null)
+            try{socket.close();}catch(IOException ignore){}
+        socket = null;
     }
 
     private synchronized Object send(Object wireable){
@@ -127,7 +134,7 @@ public class Client extends HandlerAdapter implements Runnable{
     }
 
     public void run(){
-        try{
+        try {
             socket = new Socket(hostname, port);
             socket.setSoTimeout(100);
             reader = new Reader(socket.getInputStream());
@@ -135,52 +142,59 @@ public class Client extends HandlerAdapter implements Runnable{
             lastReceived = CL.getUniversalTime();
 
             printer.toWire(CL.makeInstance(CL.findSymbol("CONNECT"),
-                                           "clock", CL.getUniversalTime(),
-                                           "id", nextId(),
-                                           "from", username,
-                                           "password", password,
-                                           "version", LICHAT_VERSION,
-                                           "extensions", EXTENSIONS));
+                    "clock", CL.getUniversalTime(),
+                    "id", nextId(),
+                    "from", username,
+                    "password", password,
+                    "version", LICHAT_VERSION,
+                    "extensions", EXTENSIONS));
             CL.sleep(0.1);
             Object read = reader.fromWire();
-            if(!(read instanceof Connect)){
+            if (!(read instanceof Connect)) {
                 throw new InvalidUpdateReceived(read);
             }
             Update update = (Update) read;
-            if(username == null || username.equals(""))
+            if (username == null || username.equals(""))
                 username = update.from;
             process(update);
 
             long lastPing = CL.getUniversalTime();
-            while(!Thread.interrupted()){
-                for(Object o = sendQueue.poll(); o != null; o = sendQueue.poll()){
-                    printer.toWire(o);
-                }
-                if(reader.stream.hasMore()){
+            while (!Thread.interrupted() && thread != null) {
+                processSendQueue();
+                if (reader.stream.hasMore()) {
                     read = reader.fromWire();
                 }
-                if(read instanceof Update){
+                if (read instanceof Update) {
                     update = (Update) read;
                     lastReceived = CL.getUniversalTime();
                     lastPing = lastReceived;
-                    if(update.from == null) update.from = username;
+                    if (update.from == null) update.from = username;
                     process(update);
                     read = null;
                 }
-                if(pingDelay < (CL.getUniversalTime() - lastPing)){
+                if (pingDelay < (CL.getUniversalTime() - lastPing)) {
                     lastPing = CL.getUniversalTime();
                     s("PING");
                 }
-                if(pingTimeout < (CL.getUniversalTime() - lastReceived)){
+                if (pingTimeout < (CL.getUniversalTime() - lastReceived)) {
                     throw new PingTimeout();
                 }
             }
+        }catch(ExitException ignore){
         }catch(Exception ex){
             process(ConnectionLost.create(ex));
         }finally{
-            if(isConnected())
-                printer.toWire(construct("DISCONNECT"));
+            if(isConnected()) {
+                try{printer.toWire(construct("DISCONNECT"));}
+                catch(Exception ignored){}
+            }
             cleanup();
+        }
+    }
+
+    private void processSendQueue(){
+        for(Object o = sendQueue.poll(); o != null; o = sendQueue.poll()){
+            printer.toWire(o);
         }
     }
 
@@ -210,6 +224,13 @@ public class Client extends HandlerAdapter implements Runnable{
         if(availableExtensions.contains("shirakumo-emotes")){
             s("EMOTES", "names", new ArrayList<String>(emotes.keySet()));
         }
+    }
+
+    public void handle(Disconnect update){
+        if(thread == Thread.currentThread())
+            throw new ExitException();
+        else
+            cleanup();
     }
 
     public void handle(Ping update){
@@ -274,5 +295,8 @@ public class Client extends HandlerAdapter implements Runnable{
 
     public boolean isSelf(Update update){
         return isSelf(update.from);
+    }
+
+    private static class ExitException extends RuntimeException{
     }
 }

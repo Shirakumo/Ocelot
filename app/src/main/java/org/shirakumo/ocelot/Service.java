@@ -269,11 +269,11 @@ public class Service extends android.app.Service implements SharedPreferences.On
     }
 
     public void disconnect(){
-        if(client.isConnected()){
-            client.disconnect();
-        }
+        Log.d("ocelot.service", "Requesting disconnect.");
+        try{client.disconnect();}catch(Exception ignore){}
         reconnecter.removeCallbacksAndMessages(null);
         connecting = false;
+        chat.handle(client.construct("DISCONNECT"));
     }
 
     public File[] getEmotePaths(){
@@ -463,6 +463,7 @@ public class Service extends android.app.Service implements SharedPreferences.On
             Set<String> toJoin = new HashSet<String>();
             toJoin.addAll(chat.listChannels());
             toJoin.addAll(prefs.getStringSet("channels", new HashSet<String>()));
+            toJoin.remove(client.servername);
             for(String channel : toJoin){
                 client.s("JOIN", "channel", channel);
             }
@@ -470,7 +471,7 @@ public class Service extends android.app.Service implements SharedPreferences.On
         }
 
         public void handle(Disconnect update){
-            Log.d("ocelot.service", "Closed connection.");
+            Log.d("ocelot.service", "Remote closed connection.");
         }
 
         public void handle(ConnectionLost update){

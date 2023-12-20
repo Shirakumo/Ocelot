@@ -48,6 +48,10 @@ public class UpdateHandler extends HandlerAdapter {
         chat.getChannel(Chat.SYSTEM_CHANNEL).showText(" ** Connection established");
     }
 
+    public void handle(Disconnect update){
+        chat.getChannel(Chat.SYSTEM_CHANNEL).showText(" ** Connection closed");
+    }
+
     public void handle(ConnectionLost update){
         if(update.exception instanceof InvalidUpdateReceived){
             Object real = ((InvalidUpdateReceived)update.exception).object;
