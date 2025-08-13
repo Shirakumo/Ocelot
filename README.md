@@ -1,6 +1,4 @@
-Ocelot <a href="https://shirakumo.org/project/Ocelot/releases/latest"><img src="https://img.shields.io/github/release/shirakumo/ocelot.svg?logo=github" alt="GitHub" height="20"/></a> <a href="https://f-droid.org/packages/org.shirakumo.ocelot/" target="_blank"><img src="https://img.shields.io/f-droid/v/org.shirakumo.ocelot.svg?logo=F-Droid" alt="Get it on F-Droid" height="20"/></a>
-======
+# This repository has [moved](https://shirakumo.org/projects/Ocelot)!
+Due to Microsoft's continued enshittification of the platform this repository has been moved to [Codeberg](https://shirakumo.org/projects/Ocelot) in August of 2025. It will not receive further updates or patches. **Issues and pull requests will not be looked at here either**, please submit your patches and issue tickets on Codeberg, or send them directly via good old email patches to [shirakumo@tymoon.eu](mailto:shirakumo@tymoon.eu).
 
-A chat client for the Lichat protocol.
-
-This supports the full Lichat 2.0 protocol, including most extensions.
+Thanks.
